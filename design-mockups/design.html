@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#2bee2b",
+                        "background-light": "#f6f8f6",
+                        "background-dark": "#102210",
+                    },
+                    fontFamily: {
+                        "display": ["Plus Jakarta Sans"]
+                    },
+                    borderRadius: {"DEFAULT": "1rem", "lg": "2rem", "xl": "3rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background-light dark:bg-background-dark font-display text-slate-900 dark:text-slate-100 min-h-screen">
+<!-- Top Navigation Bar -->
+<header class="sticky top-0 z-50 bg-white/80 backdrop-blur-md dark:bg-background-dark/80 border-b border-primary/10">
+<div class="flex items-center justify-between px-4 h-16">
+<button class="w-10 h-10 flex items-center justify-center rounded-full hover:bg-primary/10 transition-colors">
+<span class="material-symbols-outlined text-slate-900 dark:text-slate-100">arrow_back</span>
+</button>
+<div class="flex flex-col items-center">
+<h1 class="text-xl font-bold tracking-tight text-slate-900 dark:text-slate-100">Mother Best</h1>
+<span class="text-[10px] uppercase tracking-widest text-primary font-bold">Pure &amp; Simple</span>
+</div>
+<button class="w-10 h-10 flex items-center justify-center rounded-full hover:bg-primary/10 transition-colors">
+<span class="material-symbols-outlined text-slate-900 dark:text-slate-100">more_vert</span>
+</button>
+</div>
+</header>
+<main class="max-w-2xl mx-auto pb-32">
+<!-- Title Section -->
+<div class="px-6 py-6">
+<h2 class="text-3xl font-bold text-slate-900 dark:text-slate-100">Confirm Order</h2>
+<p class="text-slate-500 dark:text-slate-400 mt-1">Review your items and delivery details</p>
+</div>
+<!-- Order Items Section -->
+<div class="px-4 space-y-3">
+<div class="bg-white dark:bg-slate-900 rounded-lg p-4 shadow-sm border border-primary/5">
+<h3 class="text-sm font-bold text-primary mb-4 uppercase tracking-wider">Order Summary</h3>
+<div class="space-y-4">
+<!-- Item 1 -->
+<div class="flex items-center gap-4">
+<div class="w-14 h-14 bg-primary/10 rounded-lg flex items-center justify-center shrink-0 overflow-hidden">
+<img class="w-full h-full object-cover" data-alt="Eco-friendly product starter gift box" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDG-Kk3uPamlxXKXqDXUBn3AsJ2s8bqPekWsOsgyTYRptpgfJnOC0eRYet2Pp6sel5ZLR7xj9hZIXXSm8YEklVEoJWl3Mbe7YErZdy6BbMfQTN4BEjBe3PNEHR5TvAhEvO7H2MKDkYNKl6_v-cKpAgIVx8JLdV44QmOj2XqOMjaOJR5F9Pi1sJRXqOuDzDgUKPkCnDMnb-_rpQoFpG0vzd_fZhqugWRV9UxtObGcTaNfwGop6L8G2rq6w0Tje5WBc1SuQ7eiJI8mbXW"/>
+</div>
+<div class="flex-1">
+<p class="font-semibold text-slate-900 dark:text-slate-100 line-clamp-1">Trial Starter Box x1</p>
+<p class="text-xs text-slate-500 dark:text-slate-400">Special</p>
+</div>
+<p class="font-bold text-slate-900 dark:text-slate-100">₹199</p>
+</div>
+<!-- Item 2 -->
+<div class="flex items-center gap-4">
+<div class="w-14 h-14 bg-primary/10 rounded-lg flex items-center justify-center shrink-0 overflow-hidden">
+<img class="w-full h-full object-cover" data-alt="White detergent powder pack" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDwD98xE2uohO66uNxQkI7Tfc3Zkp-rc13VCVIzo2PhRtVdu8jfVOrfv5RR-rjRGU7WMd0-uR1TH5yEKu_ihq8tBm6ULnpBOultWN4p-JeDQPbZ8bWFjsATOVSYyrMXAa9ZtKJeNlz7lt-GbdR85oBWkOINnjOymtzL0I-4bxQxdVkfYbvWZT47PfgAEzA6zutOPCcdyMum57LQmIlV-ztzlpo_xzplbufGWYylMTyRabdNXgqSu3wKqpZIwDQFw7f5I-iMEIEjvEDd"/>
+</div>
+<div class="flex-1">
+<p class="font-semibold text-slate-900 dark:text-slate-100 line-clamp-1">Detergent Powder x1</p>
+<p class="text-xs text-slate-500 dark:text-slate-400">Laundry</p>
+</div>
+<p class="font-bold text-slate-900 dark:text-slate-100">₹85</p>
+</div>
+<!-- Item 3 -->
+<div class="flex items-center gap-4">
+<div class="w-14 h-14 bg-primary/10 rounded-lg flex items-center justify-center shrink-0 overflow-hidden">
+<img class="w-full h-full object-cover" data-alt="Green liquid dishwash bottle" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDxAwhYUQZpbBUj5A8-Ax9Ftqyus5LVEcWpM2TPl8r9b8OUvxh_EhHnFYzC39l-Qe2GzTFZZfP9HaXSqTFjXiLLOXLAhxQp0B6wDyM7gVWKGLXrEZZhKnREg_EJHxzBcUF8dxnm7Q32PS86bgACyvY5SqKqxz1EYW1_4f8mSYrE9KwkovVVCgRu4sTTNelSqbC-J6zY6JHB1zb8DDRkqW1hZNvr83IOY_TtP4VyaMkVhUuBWWLVMoRe-Q2rTSsj3iEL77GyRptlVK9S"/>
+</div>
+<div class="flex-1">
+<p class="font-semibold text-slate-900 dark:text-slate-100 line-clamp-1">Liquid Dishwash x1</p>
+<p class="text-xs text-slate-500 dark:text-slate-400">Kitchen</p>
+</div>
+<p class="font-bold text-slate-900 dark:text-slate-100">₹120</p>
+</div>
+<!-- Item 4 -->
+<div class="flex items-center gap-4">
+<div class="w-14 h-14 bg-primary/10 rounded-lg flex items-center justify-center shrink-0 overflow-hidden">
+<img class="w-full h-full object-cover" data-alt="Clear liquid handwash soap" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDyQfODJeQnVc4bFrDj2Qfo3ikp--LeGQfJvt6vag2KTlznCDQ77Z8gHOKsdwR336iKeXPxdEN3VQSPVAGTk-mnER5CCJ88AjcJHpATBJm4DIzyxaGNMjv4wjFekT3u-IYhH-j9dHprAmOQGKd_jNYOJDSQx1R0lNIVQoNFJLaDk7IErArSlgCM_OP7XBuNugYBAVlpnGTfQpdl2rzFBPAV3xUOhfA8Idh71lU4zDK3-47E4RAjaIcJQ3nlPg9UHlYWfr43VmJ-aXfZ"/>
+</div>
+<div class="flex-1">
+<p class="font-semibold text-slate-900 dark:text-slate-100 line-clamp-1">Liquid Handwash x1</p>
+<p class="text-xs text-slate-500 dark:text-slate-400">Personal</p>
+</div>
+<p class="font-bold text-slate-900 dark:text-slate-100">₹150</p>
+</div>
+<!-- Item 5 -->
+<div class="flex items-center gap-4">
+<div class="w-14 h-14 bg-primary/10 rounded-lg flex items-center justify-center shrink-0 overflow-hidden">
+<img class="w-full h-full object-cover" data-alt="Blue toilet cleaner bottle" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAT254N6By9IYeOJyXzp0vJ31_IaoH3ZJ266Hm9vB4_Fnj7NrQaJnmgz51j-lCjQkd3wyR-dvNoHC2auuC7AAIALV2u_GU5x8gseXCvZQMh3beCySgOCQeBVJXr4avqv9OST4Cep-Azc01xO8FisZ5yFUs3jDFmrEI__xrkAiutS2n4REv-chphlWVEhoYhzALmTcYxtyf15NhK7izNRCilW41HRQxM9NvkxMo55Q1ZpWIs0lIFie3roR7GNEHV5gjWmo9DSQCKNHuI"/>
+</div>
+<div class="flex-1">
+<p class="font-semibold text-slate-900 dark:text-slate-100 line-clamp-1">Toilet Cleaner x1</p>
+<p class="text-xs text-slate-500 dark:text-slate-400">Bathroom</p>
+</div>
+<p class="font-bold text-slate-900 dark:text-slate-100">₹90</p>
+</div>
+<!-- Item 6 -->
+<div class="flex items-center gap-4">
+<div class="w-14 h-14 bg-primary/10 rounded-lg flex items-center justify-center shrink-0 overflow-hidden">
+<img class="w-full h-full object-cover" data-alt="Floor cleaning white phenyl bottle" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCqG_mV9JeSlc3fiN4_3WkqIPAVnP7XS1C-WhsHu0TEzVdtJD6G18clww1uRReUbKFjjjAH3ItUp5YUR0cg30ifTiOCDSZJt9U-HsY9C_7CZfZm5NjIryF85Io-94ksyNuWm_8ixQuSk_g5QJ9deQxW3DZjhoI-_qdRXNp44B6J96DJ6jm9Lm-c6DRDLycuy7VP9Jn_PNUFlmfJe8-hAnNjgE_LUW2B9TPq_QgkxgTkigkDxIN6TUj86xSJy4ZRJGbltwpEsYA63cdK"/>
+</div>
+<div class="flex-1">
+<p class="font-semibold text-slate-900 dark:text-slate-100 line-clamp-1">White Phenyl x1</p>
+<p class="text-xs text-slate-500 dark:text-slate-400">Floor</p>
+</div>
+<p class="font-bold text-slate-900 dark:text-slate-100">₹60</p>
+</div>
+</div>
+<div class="mt-6 pt-4 border-t border-slate-100 dark:border-slate-800 flex justify-between items-center">
+<p class="text-lg font-bold text-slate-900 dark:text-slate-100">Final Amount</p>
+<p class="text-2xl font-bold text-primary">₹704</p>
+</div>
+</div>
+</div>
+<!-- Delivery Address Section -->
+<div class="px-4 mt-6">
+<div class="bg-white dark:bg-slate-900 rounded-lg p-4 shadow-sm border border-primary/5">
+<div class="flex justify-between items-start mb-4">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary">local_shipping</span>
+<h3 class="text-sm font-bold text-slate-900 dark:text-slate-100 uppercase tracking-wider">Delivery Address</h3>
+</div>
+<button class="text-primary text-sm font-bold hover:underline">Change</button>
+</div>
+<div class="space-y-1">
+<p class="text-slate-900 dark:text-slate-100 font-medium">829, Balipanda, Asansol, 713300</p>
+<div class="flex items-center gap-2 text-slate-500 dark:text-slate-400 text-sm">
+<span class="material-symbols-outlined text-base">call</span>
+<span>7412589635</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Payment Method Section -->
+<div class="px-4 mt-6">
+<div class="bg-white dark:bg-slate-900 rounded-lg p-4 shadow-sm border border-primary/5">
+<div class="flex items-center gap-2 mb-4">
+<span class="material-symbols-outlined text-primary">payments</span>
+<h3 class="text-sm font-bold text-slate-900 dark:text-slate-100 uppercase tracking-wider">Payment Method</h3>
+</div>
+<div class="space-y-3">
+<label class="flex items-center p-3 rounded-lg border-2 border-primary bg-primary/5 cursor-pointer">
+<input checked="" class="w-5 h-5 text-primary border-primary focus:ring-primary" name="payment" type="radio"/>
+<div class="ml-3">
+<p class="font-bold text-slate-900 dark:text-slate-100">Cash on Delivery</p>
+</div>
+</label>
+<label class="flex items-center p-3 rounded-lg border border-slate-200 dark:border-slate-800 cursor-not-allowed opacity-60">
+<input class="w-5 h-5 text-primary border-slate-300" disabled="" name="payment" type="radio"/>
+<div class="ml-3">
+<p class="font-bold text-slate-900 dark:text-slate-100">Online Payment</p>
+</div>
+</label>
+</div>
+<div class="mt-4 p-4 bg-primary/10 rounded-lg flex gap-3 border border-primary/20">
+<span class="material-symbols-outlined text-primary shrink-0">info</span>
+<p class="text-sm text-slate-700 dark:text-slate-300 leading-relaxed">
+                        Payment will be collected at your doorstep. Please ensure someone is available to receive the order.
+                    </p>
+</div>
+</div>
+</div>
+</main>
+<!-- Footer -->
+<footer class="fixed bottom-0 left-0 right-0 p-4 bg-white/90 dark:bg-background-dark/90 backdrop-blur-lg border-t border-primary/10 max-w-2xl mx-auto rounded-t-lg">
+<div class="mb-4 text-center">
+<p class="text-[10px] text-slate-400 dark:text-slate-500">
+                By placing this order, you agree to Mother Best's <a class="text-primary underline" href="#">Terms of Service</a> and <a class="text-primary underline" href="#">Privacy Policy</a>.
+            </p>
+</div>
+<button class="w-full bg-primary text-background-dark py-4 rounded-xl font-bold text-lg flex items-center justify-center gap-2 hover:brightness-95 active:scale-[0.98] transition-all shadow-lg shadow-primary/20">
+<span class="material-symbols-outlined">shopping_bag</span>
+            Place COD Order
+        </button>
+</footer>
+</body></html>

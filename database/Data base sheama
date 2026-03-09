@@ -1,0 +1,810 @@
+export type Json =
+  | string
+  | number
+  | boolean
+  | null
+  | { [key: string]: Json | undefined }
+  | Json[]
+
+export type Database = {
+  public: {
+    Tables: {
+      admin_activity_log: {
+        Row: {
+          action: string
+          admin_id: string | null
+          created_at: string | null
+          details: Json | null
+          id: string
+          ip_address: string | null
+          target_id: string | null
+          target_type: string | null
+          user_agent: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "admin_activity_log_admin_id_fkey"
+            columns: ["admin_id"]
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      admin_permissions: {
+        Row: {
+          description: string | null
+          granted_at: string | null
+          granted_by: string | null
+          id: string
+          is_active: boolean | null
+          permission_name: string
+          user_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "admin_permissions_granted_by_fkey"
+            columns: ["granted_by"]
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "admin_permissions_user_id_fkey"
+            columns: ["user_id"]
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      audit_logs: {
+        Row: {
+          action: string
+          created_at: string | null
+          id: string
+          ip_address: string | null
+          new_values: Json | null
+          old_values: Json | null
+          request_id: string | null
+          resource_id: string | null
+          resource_type: string
+          user_agent: string | null
+          user_id: string | null
+          user_role: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "audit_logs_user_id_fkey"
+            columns: ["user_id"]
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      categories: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          display_order: number | null
+          icon: string | null
+          id: string
+          is_active: boolean | null
+          name: string
+          parent_id: string | null
+          slug: string
+          updated_at: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "categories_parent_id_fkey"
+            columns: ["parent_id"]
+            referencedRelation: "categories"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      cod_settlements: {
+        Row: {
+          collected_amount: number
+          collected_at: string
+          created_at: string | null
+          delivery_person_id: string
+          expected_amount: number | null
+          id: string
+          notes: string | null
+          order_id: string
+          receipt_photo_url: string | null
+          settled_at: string | null
+          settled_by: string | null
+          settlement_method: string | null
+          settlement_number: string
+          status: string | null
+          updated_at: string | null
+          variance_amount: number | null
+          variance_reason: string | null
+          verified_at: string | null
+          verified_by: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cod_settlements_delivery_person_id_fkey"
+            columns: ["delivery_person_id"]
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cod_settlements_order_id_fkey"
+            columns: ["order_id"]
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cod_settlements_settled_by_fkey"
+            columns: ["settled_by"]
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cod_settlements_verified_by_fkey"
+            columns: ["verified_by"]
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      customer_delivery_assignments: {
+        Row: {
+          area: string | null
+          assigned_at: string | null
+          assigned_by: string | null
+          customer_id: string
+          deactivated_at: string | null
+          delivery_person_id: string
+          id: string
+          is_active: boolean | null
+          pincode: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customer_delivery_assignments_assigned_by_fkey"
+            columns: ["assigned_by"]
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "customer_delivery_assignments_customer_id_fkey"
+            columns: ["customer_id"]
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "customer_delivery_assignments_delivery_person_id_fkey"
+            columns: ["delivery_person_id"]
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      deliveries: {
+        Row: {
+          assigned_at: string | null
+          assigned_by: string | null
+          created_at: string | null
+          delivered_at: string | null
+          delivery_notes: string | null
+          delivery_person_id: string | null
+          delivery_photo_url: string | null
+          failed_at: string | null
+          failed_reason: string | null
+          id: string
+          order_id: string
+          otp_verified: boolean | null
+          retry_count: number | null
+          scheduled_date: string | null
+          scheduled_time_slot: string | null
+          signature_url: string | null
+          started_at: string | null
+          status: string | null
+          updated_at: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "deliveries_assigned_by_fkey"
+            columns: ["assigned_by"]
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "deliveries_delivery_person_id_fkey"
+            columns: ["delivery_person_id"]
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "deliveries_order_id_fkey"
+            columns: ["order_id"]
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      delivery_routes: {
+        Row: {
+          completed_at: string | null
+          created_at: string | null
+          created_by: string | null
+          delivery_person_id: string
+          id: string
+          order_ids: Json
+          route_date: string
+          route_name: string | null
+          started_at: string | null
+          status: string | null
+          total_orders: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "delivery_routes_created_by_fkey"
+            columns: ["created_by"]
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "delivery_routes_delivery_person_id_fkey"
+            columns: ["delivery_person_id"]
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      inventory_transactions: {
+        Row: {
+          created_at: string | null
+          id: string
+          notes: string | null
+          performed_by: string | null
+          product_id: string
+          quantity: number
+          reference_id: string | null
+          reference_type: string | null
+          type: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inventory_transactions_performed_by_fkey"
+            columns: ["performed_by"]
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_transactions_product_id_fkey"
+            columns: ["product_id"]
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      invoices: {
+        Row: {
+          billing_address: string
+          created_at: string | null
+          customer_email: string | null
+          customer_id: string
+          customer_name: string
+          customer_phone: string
+          delivery_charge: number | null
+          discount_amount: number | null
+          due_date: string | null
+          id: string
+          invoice_date: string
+          invoice_number: string
+          order_id: string
+          paid_at: string | null
+          pdf_url: string | null
+          status: string | null
+          subtotal: number
+          tax_amount: number | null
+          tax_rate: number | null
+          tax_type: string | null
+          total_amount: number
+          updated_at: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invoices_customer_id_fkey"
+            columns: ["customer_id"]
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoices_order_id_fkey"
+            columns: ["order_id"]
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      notifications: {
+        Row: {
+          action_url: string | null
+          created_at: string | null
+          email_sent: boolean | null
+          expires_at: string | null
+          id: string
+          is_read: boolean | null
+          message: string
+          push_sent: boolean | null
+          read_at: string | null
+          reference_id: string | null
+          reference_type: string | null
+          send_via: Json | null
+          sms_sent: boolean | null
+          title: string
+          type: string
+          user_id: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notifications_user_id_fkey"
+            columns: ["user_id"]
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      order_items: {
+        Row: {
+          created_at: string | null
+          discount_amount: number | null
+          id: string
+          order_id: string
+          product_id: string
+          product_name: string
+          product_sku: string | null
+          quantity: number
+          subtotal: number
+          tax_amount: number | null
+          total_amount: number
+          unit_price: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "order_items_order_id_fkey"
+            columns: ["order_id"]
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_items_product_id_fkey"
+            columns: ["product_id"]
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      order_status_history: {
+        Row: {
+          changed_by: string | null
+          created_at: string | null
+          from_status: string | null
+          id: string
+          notes: string | null
+          order_id: string
+          to_status: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "order_status_history_changed_by_fkey"
+            columns: ["changed_by"]
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_status_history_order_id_fkey"
+            columns: ["order_id"]
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      orders: {
+        Row: {
+          admin_notes: string | null
+          cancellation_reason: string | null
+          cancelled_at: string | null
+          cancelled_by: string | null
+          created_at: string | null
+          customer_notes: string | null
+          delivered_at: string | null
+          delivery_address_id: string | null
+          delivery_address_line1: string
+          delivery_address_line2: string | null
+          delivery_charge: number | null
+          delivery_city: string
+          delivery_landmark: string | null
+          delivery_name: string
+          delivery_otp: string | null
+          delivery_person_id: string | null
+          delivery_phone: string
+          delivery_pincode: string
+          delivery_state: string
+          discount_amount: number | null
+          id: string
+          order_number: string
+          order_type: string | null
+          payment_method: string | null
+          payment_status: string | null
+          referral_code: string | null
+          sales_person_id: string | null
+          scheduled_delivery_date: string | null
+          status: string | null
+          subscription_id: string | null
+          subtotal: number
+          tax_amount: number | null
+          total_amount: number
+          updated_at: string | null
+          user_id: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "orders_cancelled_by_fkey"
+            columns: ["cancelled_by"]
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "orders_delivery_address_id_fkey"
+            columns: ["delivery_address_id"]
+            referencedRelation: "user_addresses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "orders_delivery_person_id_fkey"
+            columns: ["delivery_person_id"]
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "orders_sales_person_id_fkey"
+            columns: ["sales_person_id"]
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "orders_user_id_fkey"
+            columns: ["user_id"]
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      product_images: {
+        Row: {
+          alt_text: string | null
+          created_at: string | null
+          display_order: number | null
+          id: string
+          image_url: string
+          is_primary: boolean | null
+          product_id: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_images_product_id_fkey"
+            columns: ["product_id"]
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      products: {
+        Row: {
+          base_price: number
+          category_id: string
+          cost_price: number | null
+          created_at: string | null
+          description: string | null
+          id: string
+          is_active: boolean | null
+          is_featured: boolean | null
+          low_stock_threshold: number | null
+          meta_description: string | null
+          meta_title: string | null
+          name: string
+          primary_image_url: string | null
+          sale_price: number | null
+          short_description: string | null
+          sku: string | null
+          slug: string
+          stock_quantity: number | null
+          unit: string | null
+          updated_at: string | null
+          volume: number | null
+          weight: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "products_category_id_fkey"
+            columns: ["category_id"]
+            referencedRelation: "categories"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      sales_activities: {
+        Row: {
+          activity_date: string
+          activity_type: string
+          created_at: string | null
+          customer_id: string
+          days_since_last_purchase: number | null
+          id: string
+          is_conversion: boolean | null
+          is_emergency_follow_up: boolean | null
+          next_follow_up_date: string | null
+          notes: string | null
+          order_id: string | null
+          outcome: string
+          sales_person_id: string
+          updated_at: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sales_activities_customer_id_fkey"
+            columns: ["customer_id"]
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sales_activities_order_id_fkey"
+            columns: ["order_id"]
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sales_activities_sales_person_id_fkey"
+            columns: ["sales_person_id"]
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      sales_targets: {
+        Row: {
+          actual_conversions: number | null
+          actual_visits: number | null
+          created_at: string | null
+          created_by: string | null
+          id: string
+          is_active: boolean | null
+          period_end: string
+          period_start: string
+          period_type: string | null
+          sales_person_id: string
+          target_conversions: number | null
+          target_visits: number | null
+          updated_at: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sales_targets_created_by_fkey"
+            columns: ["created_by"]
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sales_targets_sales_person_id_fkey"
+            columns: ["sales_person_id"]
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      subscription_history: {
+        Row: {
+          change_type: string
+          changed_by: string | null
+          changes: Json | null
+          created_at: string | null
+          id: string
+          notes: string | null
+          subscription_id: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "subscription_history_changed_by_fkey"
+            columns: ["changed_by"]
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "subscription_history_subscription_id_fkey"
+            columns: ["subscription_id"]
+            referencedRelation: "subscriptions"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      subscription_items: {
+        Row: {
+          created_at: string | null
+          id: string
+          product_id: string
+          quantity: number
+          subscription_id: string
+          unit_price: number
+          updated_at: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "subscription_items_product_id_fkey"
+            columns: ["product_id"]
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "subscription_items_subscription_id_fkey"
+            columns: ["subscription_id"]
+            referencedRelation: "subscriptions"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      subscriptions: {
+        Row: {
+          cancellation_reason: string | null
+          cancelled_at: string | null
+          cancelled_by: string | null
+          created_at: string | null
+          delivery_address_id: string
+          delivery_charge: number | null
+          delivery_date: number
+          frequency: string
+          id: string
+          next_delivery_date: string | null
+          paused_at: string | null
+          start_date: string
+          status: string | null
+          subscription_number: string
+          subtotal: number
+          total_amount: number
+          updated_at: string | null
+          user_id: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "subscriptions_cancelled_by_fkey"
+            columns: ["cancelled_by"]
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "subscriptions_delivery_address_id_fkey"
+            columns: ["delivery_address_id"]
+            referencedRelation: "user_addresses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "subscriptions_user_id_fkey"
+            columns: ["user_id"]
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      system_config: {
+        Row: {
+          config_key: string
+          config_value: string
+          data_type: string | null
+          description: string | null
+          id: string
+          is_public: boolean | null
+          updated_at: string | null
+          updated_by: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "system_config_updated_by_fkey"
+            columns: ["updated_by"]
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      user_addresses: {
+        Row: {
+          area_or_para: string
+          created_at: string | null
+          full_name: string
+          house_no: string | null
+          id: string
+          is_default: boolean | null
+          landmark: string
+          latitude: number | null
+          longitude: number | null
+          phone: string
+          postal_code: string | null
+          updated_at: string | null
+          user_id: string
+          village: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_addresses_user_id_fkey"
+            columns: ["user_id"]
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      user_roles: {
+        Row: {
+          assigned_at: string | null
+          assigned_by: string | null
+          id: string
+          is_active: boolean | null
+          referral_code: string | null
+          role: string
+          territory: string | null
+          user_id: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_roles_assigned_by_fkey"
+            columns: ["assigned_by"]
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_roles_user_id_fkey"
+            columns: ["user_id"]
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      user_sessions: {
+        Row: {
+          created_at: string | null
+          device_info: string | null
+          expires_at: string
+          id: string
+          ip_address: string | null
+          is_active: boolean | null
+          last_activity_at: string | null
+          token_hash: string
+          user_agent: string | null
+          user_id: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_sessions_user_id_fkey"
+            columns: ["user_id"]
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      users: {
+        Row: {
+          address: string | null
+          created_at: string | null
+          email: string | null
+          email_verified: boolean | null
+          id: string
+          is_super_admin: boolean | null
+          last_login_at: string | null
+          name: string
+          original_profile_picture_url: string | null
+          password_hash: string | null
+          phone: string | null
+          phone_verified: boolean | null
+          profile_picture_url: string | null
+          referred_by: string | null
+          status: string | null
+          updated_at: string | null
+        }
+        Relationships: []
+      }
+    }
+  }
+}

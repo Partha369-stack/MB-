@@ -5,208 +5,25 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <title>Mother Best - Home Care</title>
-  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="icon" type="image/jpeg" href="/logo.jpg" />
+  <link rel="apple-touch-icon" href="/logo.jpg" />
+  <link rel="manifest" href="/manifest.json" />
+  <meta name="theme-color" content="#064E3B" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <link
-    href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@400..700&family=Inter:wght@400;500;600;700;800&family=Playfair+Display:wght@700;800;900&display=swap"
+    href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@400..700&family=Inter:wght@400;500;600;700;800&family=Playfair+Display:wght@700;800;900&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap"
     rel="stylesheet">
-  <style>
-    .font-logo {
-      font-family: 'Dancing Script', cursive;
-    }
-
-    html {
-      scroll-behavior: smooth;
-    }
-
-    @keyframes marquee {
-      0% {
-        transform: translateX(0);
-      }
-
-      100% {
-        transform: translateX(-50%);
-      }
-    }
-
-    /* Optimizing Marquee */
-    .animate-marquee {
-      display: flex;
-      width: max-content;
-      animation: marquee 30s linear infinite;
-      will-change: transform;
-    }
-
-    .animate-marquee:hover {
-      animation-play-state: paused;
-    }
-
-    body {
-      font-family: 'Inter', sans-serif;
-      -webkit-tap-highlight-color: transparent;
-      background-color: #FDFCF8;
-      overflow-x: hidden;
-    }
-
-    .font-serif {
-      font-family: 'Playfair Display', serif;
-    }
-
-    .safe-bottom {
-      padding-bottom: env(safe-area-inset-bottom);
-    }
-
-    .bg-cream {
-      background-color: #FDFCF8;
-    }
-
-    /* Entry Animations */
-    @keyframes fadeInUp {
-      from {
-        opacity: 0;
-        transform: translateY(40px);
-      }
-
-      to {
-        opacity: 1;
-        transform: translateY(0);
-      }
-    }
-
-    @keyframes fadeIn {
-      from {
-        opacity: 0;
-      }
-
-      to {
-        opacity: 1;
-      }
-    }
-
-    @keyframes slideInRight {
-      from {
-        opacity: 0;
-        transform: translateX(50px);
-      }
-
-      to {
-        opacity: 1;
-        transform: translateX(0);
-      }
-    }
-
-    @keyframes slideInLeft {
-      from {
-        opacity: 0;
-        transform: translateX(-50px);
-      }
-
-      to {
-        opacity: 1;
-        transform: translateX(0);
-      }
-    }
-
-    @keyframes zoomIn {
-      from {
-        opacity: 0;
-        transform: scale(0.9);
-      }
-
-      to {
-        opacity: 1;
-        transform: scale(1);
-      }
-    }
-
-    @keyframes float {
-
-      0%,
-      100% {
-        transform: translateY(0);
-      }
-
-      50% {
-        transform: translateY(-10px);
-      }
-    }
-
-    .animate-reveal {
-      opacity: 0;
-      transform: translateY(30px);
-      transition: all 0.8s cubic-bezier(0.16, 1, 0.3, 1);
-    }
-
-    .animate-reveal.active {
-      opacity: 1;
-      transform: translateY(0);
-    }
-
-    .animate-reveal-horizontal {
-      opacity: 0;
-      transform: translateX(50px);
-      transition: all 1s cubic-bezier(0.16, 1, 0.3, 1);
-    }
-
-    .animate-reveal-horizontal.active {
-      opacity: 1;
-      transform: translateX(0);
-    }
-
-    .animate-fade-in-up {
-      animation: fadeInUp 1s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-    }
-
-    .animate-fade-in {
-      animation: fadeIn 1.2s ease-out forwards;
-    }
-
-    .animate-slide-in-right {
-      animation: slideInRight 1s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-    }
-
-    .animate-slide-in-left {
-      animation: slideInLeft 1s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-    }
-
-    .animate-zoom-in {
-      animation: zoomIn 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-    }
-
-    .animate-float {
-      animation: float 4s ease-in-out infinite;
-    }
-
-    .delay-100 {
-      animation-delay: 100ms;
-    }
-
-    .delay-200 {
-      animation-delay: 200ms;
-    }
-
-    .delay-300 {
-      animation-delay: 300ms;
-    }
-
-    .delay-400 {
-      animation-delay: 400ms;
-    }
-
-    .delay-500 {
-      animation-delay: 500ms;
-    }
-
-    .stagger-children>* {
-      opacity: 0;
-    }
-  </style>
-  <link rel="stylesheet" href="/index.css">
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap"
+    rel="stylesheet" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
   <script src="https://cdn.jsdelivr.net/npm/@vladmandic/face-api/dist/face-api.min.js"></script>
 </head>
 
-<body class="bg-cream text-slate-900 overflow-x-hidden">
+<body class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 overflow-x-hidden">
   <div id="root"></div>
-  <script type="module" src="/index.tsx"></script>
+  <script type="module" src="/src/index.tsx"></script>
 </body>
 
 </html>

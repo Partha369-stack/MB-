@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Mother Best Shop</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#2bee2b",
+                        "background-light": "#f6f8f6",
+                        "background-dark": "#102210",
+                    },
+                    fontFamily: {
+                        "display": ["Plus Jakarta Sans"]
+                    },
+                    borderRadius: {"DEFAULT": "1rem", "lg": "2rem", "xl": "3rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background-light dark:bg-background-dark font-display text-slate-900 dark:text-slate-100 min-h-screen flex flex-col">
+<!-- Header -->
+<header class="sticky top-0 z-50 flex items-center bg-white dark:bg-background-dark/95 backdrop-blur-sm p-4 border-b border-primary/10 justify-between">
+<div class="flex size-10 shrink-0 items-center justify-center">
+<span class="material-symbols-outlined text-slate-700 dark:text-slate-300">menu</span>
+</div>
+<h1 class="text-xl font-bold leading-tight tracking-tight flex-1 text-center text-slate-900 dark:text-white">Mother Best</h1>
+<div class="flex size-10 items-center justify-end relative">
+<button class="flex cursor-pointer items-center justify-center rounded-full size-10 bg-primary/10 text-slate-900 dark:text-white">
+<span class="material-symbols-outlined">shopping_cart</span>
+</button>
+<span class="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-slate-900 border-2 border-white dark:border-background-dark">6</span>
+</div>
+</header>
+<main class="flex-1 pb-40">
+<!-- Limited Offer Hero -->
+<div class="p-4">
+<div class="flex flex-col overflow-hidden rounded-xl bg-white dark:bg-slate-800 shadow-sm border border-primary/10">
+<div class="w-full h-48 bg-center bg-cover" data-alt="Eco-friendly cleaning supplies gift box set" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuARWbeRCb5yN9gZiC-gN2UA-OBXSCNEKPBARzZTN5H83ECoOTBa_ahlyhiM8FX8bRrSBBadO-e3s4DW7TfT5IWz7ydmuCo7Jv4Qvf2VRZz6oDCOCWYH66fPUR72RzGqDlfDxGVCWbNMsgZhF9sNr-16_BdIFVXqlB1fT5_4JqqkLMLS2FCYa-HJlGROS6YxZqBaMmi4AjqAPcoLckJgRy_p67JrI-MVf_EOsH39WIlQ1zXwWvv2y73_fNqHo940tJr-4y4DoXWiO-pU");'></div>
+<div class="flex flex-col p-4 gap-2">
+<span class="text-primary font-bold text-xs uppercase tracking-wider">Limited Offer</span>
+<h2 class="text-lg font-bold text-slate-900 dark:text-white">First Order Gift Box</h2>
+<div class="flex items-center justify-between mt-2">
+<div class="flex flex-col">
+<span class="text-2xl font-bold text-slate-900 dark:text-white">₹199</span>
+<span class="text-sm text-slate-400 line-through">Original ₹499</span>
+</div>
+<button class="bg-primary hover:bg-primary/90 text-slate-900 font-bold py-2 px-6 rounded-full text-sm transition-colors">
+                            Add to Basket
+                        </button>
+</div>
+</div>
+</div>
+</div>
+<!-- Premium Membership -->
+<div class="px-4 pb-4">
+<div class="flex items-center justify-between gap-4 rounded-xl border-2 border-primary bg-primary/5 p-5">
+<div class="flex flex-col gap-1">
+<p class="text-slate-900 dark:text-white text-base font-bold">Premium Membership</p>
+<p class="text-slate-600 dark:text-slate-400 text-sm">Unlock exclusive benefits and discounts</p>
+</div>
+<button class="bg-primary text-slate-900 font-bold py-2 px-4 rounded-full text-sm whitespace-nowrap shadow-sm">
+                    Join Now
+                </button>
+</div>
+</div>
+<!-- Products List -->
+<div class="px-4">
+<h2 class="text-xl font-bold text-slate-900 dark:text-white mb-4">Our Products</h2>
+<div class="space-y-4">
+<!-- Product 1 -->
+<div class="flex items-center gap-4 bg-white dark:bg-slate-800 p-3 rounded-xl shadow-sm border border-slate-100 dark:border-slate-700">
+<div class="size-16 rounded-lg bg-slate-100 dark:bg-slate-700 flex items-center justify-center">
+<span class="material-symbols-outlined text-slate-400">clean_hands</span>
+</div>
+<div class="flex-1">
+<h3 class="font-bold text-slate-900 dark:text-white">Detergent Powder</h3>
+<p class="text-primary font-bold">₹85<span class="text-xs text-slate-400 font-normal">/kg</span></p>
+</div>
+<div class="flex items-center gap-3 bg-slate-50 dark:bg-slate-900 rounded-full p-1 border border-slate-100 dark:border-slate-700">
+<button class="size-8 flex items-center justify-center rounded-full bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 shadow-sm"><span class="material-symbols-outlined text-sm">remove</span></button>
+<span class="font-bold text-slate-900 dark:text-white w-4 text-center">1</span>
+<button class="size-8 flex items-center justify-center rounded-full bg-primary text-slate-900 shadow-sm"><span class="material-symbols-outlined text-sm">add</span></button>
+</div>
+</div>
+<!-- Product 2 -->
+<div class="flex items-center gap-4 bg-white dark:bg-slate-800 p-3 rounded-xl shadow-sm border border-slate-100 dark:border-slate-700">
+<div class="size-16 rounded-lg bg-slate-100 dark:bg-slate-700 flex items-center justify-center">
+<span class="material-symbols-outlined text-slate-400">water_drop</span>
+</div>
+<div class="flex-1">
+<h3 class="font-bold text-slate-900 dark:text-white">Liquid Dishwash</h3>
+<p class="text-primary font-bold">₹120<span class="text-xs text-slate-400 font-normal">/litre</span></p>
+</div>
+<div class="flex items-center gap-3 bg-slate-50 dark:bg-slate-900 rounded-full p-1 border border-slate-100 dark:border-slate-700">
+<button class="size-8 flex items-center justify-center rounded-full bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 shadow-sm"><span class="material-symbols-outlined text-sm">remove</span></button>
+<span class="font-bold text-slate-900 dark:text-white w-4 text-center">1</span>
+<button class="size-8 flex items-center justify-center rounded-full bg-primary text-slate-900 shadow-sm"><span class="material-symbols-outlined text-sm">add</span></button>
+</div>
+</div>
+<!-- Product 3 -->
+<div class="flex items-center gap-4 bg-white dark:bg-slate-800 p-3 rounded-xl shadow-sm border border-slate-100 dark:border-slate-700">
+<div class="size-16 rounded-lg bg-slate-100 dark:bg-slate-700 flex items-center justify-center">
+<span class="material-symbols-outlined text-slate-400">soap</span>
+</div>
+<div class="flex-1">
+<h3 class="font-bold text-slate-900 dark:text-white">Liquid Handwash</h3>
+<p class="text-primary font-bold">₹150<span class="text-xs text-slate-400 font-normal">/litre</span></p>
+</div>
+<div class="flex items-center gap-3 bg-slate-50 dark:bg-slate-900 rounded-full p-1 border border-slate-100 dark:border-slate-700">
+<button class="size-8 flex items-center justify-center rounded-full bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 shadow-sm"><span class="material-symbols-outlined text-sm">remove</span></button>
+<span class="font-bold text-slate-900 dark:text-white w-4 text-center">1</span>
+<button class="size-8 flex items-center justify-center rounded-full bg-primary text-slate-900 shadow-sm"><span class="material-symbols-outlined text-sm">add</span></button>
+</div>
+</div>
+<!-- Product 4 -->
+<div class="flex items-center gap-4 bg-white dark:bg-slate-800 p-3 rounded-xl shadow-sm border border-slate-100 dark:border-slate-700">
+<div class="size-16 rounded-lg bg-slate-100 dark:bg-slate-700 flex items-center justify-center">
+<span class="material-symbols-outlined text-slate-400">sanitizer</span>
+</div>
+<div class="flex-1">
+<h3 class="font-bold text-slate-900 dark:text-white">Toilet Cleaner</h3>
+<p class="text-primary font-bold">₹90<span class="text-xs text-slate-400 font-normal">/litre</span></p>
+</div>
+<div class="flex items-center gap-3 bg-slate-50 dark:bg-slate-900 rounded-full p-1 border border-slate-100 dark:border-slate-700">
+<button class="size-8 flex items-center justify-center rounded-full bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 shadow-sm"><span class="material-symbols-outlined text-sm">remove</span></button>
+<span class="font-bold text-slate-900 dark:text-white w-4 text-center">1</span>
+<button class="size-8 flex items-center justify-center rounded-full bg-primary text-slate-900 shadow-sm"><span class="material-symbols-outlined text-sm">add</span></button>
+</div>
+</div>
+<!-- Product 5 -->
+<div class="flex items-center gap-4 bg-white dark:bg-slate-800 p-3 rounded-xl shadow-sm border border-slate-100 dark:border-slate-700">
+<div class="size-16 rounded-lg bg-slate-100 dark:bg-slate-700 flex items-center justify-center">
+<span class="material-symbols-outlined text-slate-400">liquor</span>
+</div>
+<div class="flex-1">
+<h3 class="font-bold text-slate-900 dark:text-white">White Phenyl</h3>
+<p class="text-primary font-bold">₹60<span class="text-xs text-slate-400 font-normal">/litre</span></p>
+</div>
+<div class="flex items-center gap-3 bg-slate-50 dark:bg-slate-900 rounded-full p-1 border border-slate-100 dark:border-slate-700">
+<button class="size-8 flex items-center justify-center rounded-full bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 shadow-sm"><span class="material-symbols-outlined text-sm">remove</span></button>
+<span class="font-bold text-slate-900 dark:text-white w-4 text-center">1</span>
+<button class="size-8 flex items-center justify-center rounded-full bg-primary text-slate-900 shadow-sm"><span class="material-symbols-outlined text-sm">add</span></button>
+</div>
+</div>
+</div>
+</div>
+</main>
+<!-- Fixed Bottom Summary & Nav -->
+<div class="fixed bottom-0 left-0 right-0 z-50">
+<!-- Summary Bar -->
+<div class="px-4 py-3 bg-slate-900 dark:bg-slate-800 flex items-center justify-between mx-4 mb-2 rounded-xl shadow-lg border border-white/10">
+<div class="flex flex-col">
+<span class="text-white text-sm font-medium">6 items • ₹704</span>
+<span class="text-primary text-[10px] font-bold">Taxes &amp; delivery extra</span>
+</div>
+<button class="flex items-center gap-2 bg-primary text-slate-900 font-bold px-6 py-2 rounded-full">
+<span>Checkout</span>
+<span class="material-symbols-outlined text-lg">arrow_forward</span>
+</button>
+</div>
+<!-- Navigation Bar -->
+<nav class="bg-white dark:bg-background-dark border-t border-slate-100 dark:border-slate-800 flex items-center justify-around py-2 px-4 pb-6">
+<a class="flex flex-col items-center gap-1 text-slate-400 dark:text-slate-500" href="#">
+<span class="material-symbols-outlined">home</span>
+<span class="text-[10px] font-bold uppercase tracking-wider">Home</span>
+</a>
+<a class="flex flex-col items-center gap-1 text-primary" href="#">
+<span class="material-symbols-outlined fill-1">storefront</span>
+<span class="text-[10px] font-bold uppercase tracking-wider">Shop</span>
+</a>
+<a class="flex flex-col items-center gap-1 text-slate-400 dark:text-slate-500" href="#">
+<span class="material-symbols-outlined">receipt_long</span>
+<span class="text-[10px] font-bold uppercase tracking-wider">Orders</span>
+</a>
+<a class="flex flex-col items-center gap-1 text-slate-400 dark:text-slate-500" href="#">
+<span class="material-symbols-outlined">person</span>
+<span class="text-[10px] font-bold uppercase tracking-wider">Profile</span>
+</a>
+</nav>
+</div>
+</body></html>
