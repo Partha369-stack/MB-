@@ -16,7 +16,8 @@ import {
     Home,
     Store,
     ScrollText,
-    ArrowRight
+    ArrowRight,
+    Gauge
 } from 'lucide-react';
 import { storageService } from '../services/storageService';
 import { authService } from '../services/authService';
@@ -82,10 +83,11 @@ const LandingPage: React.FC = () => {
                                         const isAdmin = user.role === 'admin' || roles.includes('admin') || user.email === 'pradhanparthasarthi3@gmail.com';
                                         const isSales = user.role === 'sales' || roles.includes('sales') || isAdmin;
                                         const isDelivery = user.role === 'delivery' || roles.includes('delivery') || isAdmin;
+                                        const isLogistic = user.role === 'logistic' || roles.includes('logistic') || isAdmin;
 
                                         return (
                                             <>
-                                                {(isAdmin || isSales || isDelivery) && (
+                                                {(isAdmin || isSales || isDelivery || isLogistic) && (
                                                     <>
                                                         <p className="px-3 py-1.5 text-[8px] font-black uppercase text-slate-400 tracking-[0.2em] mt-1">Management</p>
                                                         {isAdmin && (
@@ -113,6 +115,15 @@ const LandingPage: React.FC = () => {
                                                             >
                                                                 <Truck className="w-4 h-4 text-slate-400" />
                                                                 Delivery Dashboard
+                                                            </button>
+                                                        )}
+                                                        {isLogistic && (
+                                                            <button
+                                                                onClick={() => { setIsProfileDropdownOpen(false); navigate('/admin/Logistic'); }}
+                                                                className="w-full text-left px-3 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 hover:text-green-600 rounded-xl transition-colors flex items-center gap-3"
+                                                            >
+                                                                <Gauge className="w-4 h-4 text-slate-400" />
+                                                                Logistic Dashboard
                                                             </button>
                                                         )}
                                                         <div className="h-px bg-slate-100 my-1 mx-2"></div>

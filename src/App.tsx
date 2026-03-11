@@ -14,32 +14,18 @@ import ManageSubscriptionPage from './pages/ManageSubscriptionPage';
 import AdminDashboard from './pages/AdminDashboard';
 import SalesDashboard from './pages/SalesDashboard';
 import DeliveryDashboard from './pages/DeliveryDashboard';
+import LogisticDashboard from './pages/LogisticDashboard';
 import ProfileMobile from './components/ProfileMobile';
+import ChoosePlanItems from './pages/ChoosePlanItems';
+import PaymentMethodPage from './pages/PaymentMethodPage';
 
 // Services
 import { authService } from './services/authService';
 
 const AppRoutes: React.FC = () => {
-  const { view, setView, user, setUser, allAuthorities } = useAppContext();
+  const { view, setView, user, setUser, allAuthorities, isInitializing } = useAppContext();
   const navigate = useNavigate();
   const location = useLocation();
-
-  // AI Face Detection Model Loading (Keeping it here as it's global)
-  useEffect(() => {
-    const loadModels = async () => {
-      try {
-        // @ts-ignore
-        const faceapi = window.faceapi;
-        if (!faceapi) return;
-        const MODEL_URL = 'https://raw.githubusercontent.com/vladmandic/face-api/master/model/';
-        await faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL);
-        console.log("AI Face models loaded");
-      } catch (err) {
-        console.error("AI Model load failed:", err);
-      }
-    };
-    loadModels();
-  }, []);
 
   // Sync View state with URL
   useEffect(() => {
@@ -49,6 +35,19 @@ const AppRoutes: React.FC = () => {
       setView('LANDING');
     }
   }, [location.pathname]);
+
+  if (isInitializing) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-cream">
+        <div className="flex flex-col items-center gap-4 animate-pulse">
+            <div className="w-16 h-16 bg-white rounded-full overflow-hidden border-2 border-green-50 shadow-md flex items-center justify-center shrink-0">
+                <img src="/logo.jpg" className="w-full h-full object-cover scale-110" alt="Logo" />
+            </div>
+            <p className="text-green-800 font-bold tracking-widest text-sm uppercase">Loading...</p>
+        </div>
+      </div>
+    );
+  }
 
   const handleLogout = async () => {
     await authService.logout();
@@ -80,6 +79,16 @@ const AppRoutes: React.FC = () => {
         })()
       } />
 
+      {/* Logistic Routes */}
+      <Route path="/admin/Logistic" element={
+        (() => {
+          const hasLogisticAuth = allAuthorities.some(a => a.userId === user?.id && a.role === 'logistic' && a.isActive);
+          return (user?.role === 'logistic' || user?.role === 'admin' || hasLogisticAuth) ? (
+            <LogisticDashboard user={user!} onLogout={handleLogout} />
+          ) : <Navigate to="/" />
+        })()
+      } />
+
       {/* Customer Routes */}
       <Route path="/products" element={
         user ? (
@@ -92,6 +101,8 @@ const AppRoutes: React.FC = () => {
             {view === 'AUTO_DELIVERY_FLOW' && <AutoDeliveryPage />}
             {view === 'MANAGE_SUBSCRIPTION' && <ManageSubscriptionPage />}
             {view === 'PROFILE' && <ProfileMobile user={user} setUser={setUser} onLogout={handleLogout} />}
+            {view === 'CHOOSE_PLAN_ITEMS' && <ChoosePlanItems />}
+            {view === 'PAYMENT_METHOD' && <PaymentMethodPage />}
             {view === 'LANDING' && <Navigate to="/" replace />}
           </main>
         ) : <Navigate to="/" />

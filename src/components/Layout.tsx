@@ -177,11 +177,12 @@ export const ProfileDropdown: React.FC<ProfileDropdownProps> = ({
           const isAdmin = user.role === 'admin' || roles.includes('admin') || user.email === import.meta.env.VITE_SUPER_ADMIN_EMAIL;
           const isSales = roles.includes('sales') || user.role === 'admin';
           const isDelivery = roles.includes('delivery') || user.role === 'admin';
+          const isLogistic = roles.includes('logistic') || user.role === 'admin';
 
           return (
             <>
               {/* Dashboards Section */}
-              {(isAdmin || isSales || isDelivery) && (
+              {(isAdmin || isSales || isDelivery || isLogistic) && (
                 <div className="mb-2">
                   <p className="px-4 py-1.5 text-[8px] font-black uppercase text-slate-400 tracking-[0.2em]">Management</p>
                   {isAdmin && (
@@ -203,6 +204,13 @@ export const ProfileDropdown: React.FC<ProfileDropdownProps> = ({
                       icon={<Truck className="w-4 h-4" />}
                       label="Delivery Dashboard"
                       onClick={() => { onNavigateToDelivery(); onClose(); }}
+                    />
+                  )}
+                  {isLogistic && (
+                    <DropdownItem
+                      icon={<Gauge className="w-4 h-4" />}
+                      label="Logistic Dashboard"
+                      onClick={() => { window.location.href = '/admin/Logistic'; onClose(); }}
                     />
                   )}
                   <div className="h-px bg-slate-50 my-1.5 mx-3" />
@@ -280,7 +288,7 @@ export const MobileNav: React.FC<{
 }> = ({ activeView, onNavigate, user }) => {
   const navItems = [
     { id: 'LANDING', label: 'Home', icon: 'home' },
-    { id: 'PRODUCT_HUB', label: 'Shop', icon: 'storefront' },
+    { id: 'CHOOSE_PLAN_ITEMS', label: 'Plans', icon: 'check_box' },
     { id: 'ORDER_HISTORY', label: 'Orders', icon: 'receipt_long' },
     { id: user ? 'PROFILE' : 'AUTH', label: 'Profile', icon: 'person' },
   ];

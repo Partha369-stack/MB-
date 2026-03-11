@@ -50,6 +50,7 @@ const DeliveryDashboard: React.FC<DeliveryDashboardProps> = ({ user, onLogout, o
 
     // Modals
     const [showReturnModal, setShowReturnModal] = useState(false);
+    const [showQueueModal, setShowQueueModal] = useState(false);
     const [selectedOrderForReturn, setSelectedOrderForReturn] = useState<Order | null>(null);
     const [returnReason, setReturnReason] = useState('');
 
@@ -191,6 +192,33 @@ const DeliveryDashboard: React.FC<DeliveryDashboardProps> = ({ user, onLogout, o
             setSelectedOrderForReturn(null);
             fetchData();
         } catch (err) { console.error("Return failed:", err); }
+    };
+
+    const handleAcceptAllTasks = async () => {
+        const confirmedOrders = activeMissions.filter(o => o.status === 'confirmed');
+        if (confirmedOrders.length === 0) return;
+
+        setLoading(true);
+        try {
+            // Sequential updates to ensure each order gets its OTP and correct processing via saveOrder
+            for (const order of confirmedOrders) {
+                await storageService.saveOrder({
+                    ...order,
+                    status: 'out_for_delivery',
+                    deliveryPersonId: user.id
+                });
+                storageService.publishOrderStatusUpdate(order.id, 'out_for_delivery', order.userId).catch(() => { });
+            }
+            alert(`Successfully accepted ${confirmedOrders.length} tasks!`);
+            setShowQueueModal(false);
+            fetchData();
+        } catch (err: any) {
+            console.error("Accept All Failed:", err);
+            alert(`Some tasks could not be accepted: ${err.message || 'Unknown error'}`);
+            fetchData();
+        } finally {
+            setLoading(false);
+        }
     };
 
     const cleanSearch = searchQuery.toLowerCase().replace(/^#?mb/, '');
@@ -432,7 +460,10 @@ const DeliveryDashboard: React.FC<DeliveryDashboardProps> = ({ user, onLogout, o
                             <div>
                                 <div className="flex items-center justify-between mb-3">
                                     <h2 className="text-sm font-black text-slate-800">Next Tasks</h2>
-                                    <button className="text-[10px] font-bold text-green-500 uppercase tracking-wide hover:text-green-700 transition-colors">
+                                    <button 
+                                        onClick={() => setShowQueueModal(true)}
+                                        className="text-[10px] font-bold text-green-500 uppercase tracking-wide hover:text-green-700 transition-colors"
+                                    >
                                         View Queue
                                     </button>
                                 </div>
@@ -632,6 +663,131 @@ const DeliveryDashboard: React.FC<DeliveryDashboardProps> = ({ user, onLogout, o
                     </div>
                 </div>
             )}
+
+            <QueueModal 
+                isOpen={showQueueModal}
+                onClose={() => setShowQueueModal(false)}
+                missions={activeMissions}
+                users={allUsers}
+                onAcceptAll={handleAcceptAllTasks}
+                onAcceptOrder={(id) => handleUpdateOrderStatus(id, 'out_for_delivery')}
+            />
+        </div>
+    );
+};
+
+const QueueModal: React.FC<{
+    isOpen: boolean;
+    onClose: () => void;
+    missions: Order[];
+    users: UserType[];
+    onAcceptAll: () => void;
+    onAcceptOrder: (id: string) => void;
+}> = ({ isOpen, onClose, missions, users, onAcceptAll, onAcceptOrder }) => {
+    if (!isOpen) return null;
+
+    const confirmedMissions = missions.filter(m => m.status === 'confirmed');
+    const inProgressMissions = missions.filter(m => m.status === 'out_for_delivery');
+
+    return (
+        <div className="fixed inset-0 z-[100] bg-black/40 backdrop-blur-sm flex items-end justify-center px-4 pb-8 overflow-hidden" onClick={onClose}>
+            <div 
+                className="bg-[#F5F7F5] w-full max-w-sm rounded-[32px] max-h-[85vh] flex flex-col shadow-2xl animate-in fade-in slide-in-from-bottom-5 duration-300" 
+                onClick={e => e.stopPropagation()}
+            >
+                {/* Drag handle */}
+                <div className="w-12 h-1.5 bg-slate-200 rounded-full mx-auto my-4 flex-shrink-0" />
+
+                <div className="px-6 pb-4 flex items-center justify-between">
+                    <div>
+                        <h3 className="text-xl font-black text-slate-900 leading-tight">Task Queue</h3>
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">
+                            {missions.length} active assignments
+                        </p>
+                    </div>
+                    <button 
+                        onClick={onClose}
+                        className="w-10 h-10 rounded-2xl bg-white border border-slate-100 flex items-center justify-center text-slate-400 active:scale-90 transition-all shadow-sm"
+                    >
+                        <ChevronDown className="w-5 h-5" />
+                    </button>
+                </div>
+
+                <div className="flex-1 overflow-y-auto px-6 space-y-6 pb-8">
+                    {/* Confirm Button for All */}
+                    {confirmedMissions.length > 1 && (
+                        <button
+                            onClick={onAcceptAll}
+                            className="w-full bg-green-500 text-white font-black py-4 rounded-2xl text-[11px] uppercase tracking-[0.15em] flex items-center justify-center gap-2 shadow-lg shadow-green-200 active:scale-[0.98] transition-all"
+                        >
+                            <Truck className="w-4 h-4" /> Accept All ({confirmedMissions.length})
+                        </button>
+                    )}
+
+                    {/* Pending Section */}
+                    {confirmedMissions.length > 0 && (
+                        <div className="space-y-3">
+                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">Waiting Acceptance</p>
+                            {confirmedMissions.map(m => {
+                                const customer = users.find(u => u.id === m.userId);
+                                return (
+                                    <div key={m.id} className="bg-white rounded-2xl border border-slate-100 p-4 flex items-center gap-4 group">
+                                        <div className="w-10 h-10 rounded-xl bg-orange-50 border border-orange-100 flex items-center justify-center flex-shrink-0">
+                                            <Package className="w-5 h-5 text-orange-400" />
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <p className="text-xs font-black text-slate-900 truncate">{customer?.name || 'Customer'}</p>
+                                            <p className="text-[10px] font-semibold text-slate-500 mt-0.5 truncate">{customer?.address || 'No address'}</p>
+                                        </div>
+                                        <button 
+                                            onClick={() => onAcceptOrder(m.id)}
+                                            className="w-8 h-8 rounded-lg bg-green-50 border border-green-100 flex items-center justify-center text-green-600 active:scale-90 transition-all"
+                                        >
+                                            <Check className="w-4 h-4" />
+                                        </button>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    )}
+
+                    {/* In Progress Section */}
+                    {inProgressMissions.length > 0 && (
+                        <div className="space-y-3">
+                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">Out for Delivery</p>
+                            {inProgressMissions.map(m => {
+                                const customer = users.find(u => u.id === m.userId);
+                                return (
+                                    <div key={m.id} className="bg-white/60 rounded-2xl border border-slate-100 p-4 flex items-center gap-4">
+                                        <div className="w-10 h-10 rounded-xl bg-green-50 border border-green-100 flex items-center justify-center flex-shrink-0">
+                                            <Truck className="w-5 h-5 text-green-400" />
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <p className="text-xs font-black text-slate-900 truncate">{customer?.name || 'Customer'}</p>
+                                            <p className="text-[10px] font-semibold text-slate-400 mt-0.5 truncate">{customer?.address || 'No address'}</p>
+                                        </div>
+                                        <div className="px-2 py-1 rounded-md bg-green-100 text-[8px] font-black text-green-700 uppercase tracking-wide">
+                                            Active
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    )}
+
+                    {missions.length === 0 && (
+                        <div className="py-12 flex flex-col items-center text-center space-y-4">
+                            <div className="w-16 h-16 bg-white rounded-3xl flex items-center justify-center shadow-sm">
+                                <Package className="w-8 h-8 text-slate-200" />
+                            </div>
+                            <p className="text-xs font-black text-slate-300 uppercase tracking-widest">Your queue is empty</p>
+                        </div>
+                    )}
+                </div>
+                
+                {/* Safe area spacer */}
+                <div className="h-4 flex-shrink-0" />
+            </div>
         </div>
     );
 };

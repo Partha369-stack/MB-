@@ -295,23 +295,25 @@ export const authService = {
             // If profile does not exist, create it from provider metadata
             const { data: existingProfile } = await insforge.database
                 .from('profiles')
-                .select('id')
+                .select('id, phone, role')
                 .eq('id', session.user.id)
                 .single();
 
-            if (!existingProfile) {
-                // @ts-ignore
-                const metadata = session.user.user_metadata || {};
-                await insforge.database.from('profiles').insert([{
-                    id: session.user.id,
-                    email: session.user.email,
-                    name: metadata.full_name || metadata.name || '',
-                    profile_pic: metadata.avatar_url || metadata.picture || null,
-                    role: 'customer',
-                    is_active: true,
-                    created_at: new Date().toISOString(),
-                    updated_at: new Date().toISOString()
-                }]);
+            const { count: addressCount } = await insforge.database
+                .from('user_addresses')
+                .select('*', { count: 'exact', head: true })
+                .eq('user_id', session.user.id);
+
+            const isComplete = existingProfile?.role === 'admin' || 
+                               (existingProfile?.phone && existingProfile.phone.trim() !== '') ||
+                               (addressCount !== null && addressCount > 0);
+
+            if (!existingProfile || !isComplete) {
+                await insforge.auth.signOut();
+                localStorage.setItem('auth_error', 'Welcome! Please join the family first to continue.');
+                localStorage.setItem('auth_mode_switch', 'REGISTER');
+                localStorage.setItem('force_auth_view', 'true');
+                return null;
             }
         }
 

@@ -23,23 +23,55 @@ const CheckoutPage: React.FC = () => {
             if (!session) throw new Error("Your session has expired. Please log in again.");
 
             const total = cart.reduce((acc, item) => acc + (item.product.price * item.quantity), 0);
-            const order: Omit<Order, 'id' | 'createdAt'> = {
+            
+            // Normalize payment method for storage (Online or COD)
+            const normalizedMethod = paymentMethod.toUpperCase() === 'ONLINE' ? 'Online' : 'COD';
+
+            const orderData = {
                 userId: session.user.id,
                 items: cart,
                 total: total,
                 deliveryDate: 'Scheduled',
-                status: 'pending',
-                paymentMethod: (paymentMethod as any) || 'COD'
+                status: 'pending' as const,
+                paymentMethod: normalizedMethod as 'Online' | 'COD'
             };
-            await storageService.saveOrder(order);
 
-            const allOrders = await storageService.getAllOrders();
-            const createdOrder = allOrders.find(o => o.userId === session.user.id && o.total === total);
-            if (createdOrder) setLastCreatedOrder(createdOrder);
+            if (paymentMethod.toUpperCase() === 'ONLINE') {
+                // Online Payment Flow (UPI Redirect)
+                try {
+                    // 1. Create the Order first in "pending" status
+                    const savedOrder = await storageService.saveOrder(orderData);
+                    setLastCreatedOrder(savedOrder);
 
-            await refreshUserData(session.user.id);
-            setCart([]);
-            setView('ORDER_SUCCESS');
+                    // 2. Construct UPI URL for redirecting to UPI Apps (GPay, PhonePe, Paytm, etc.)
+                    // pa: VPA/UPI ID, pn: Payee Name, am: Amount, cu: Currency, tn: Transaction Note
+                    const upiUrl = `upi://pay?pa=pradhanparthasarthi3@okicici&pn=Mother%20Best&am=${total}&cu=INR&tn=MotherBestOrder_${savedOrder.id}`;
+
+                    // 3. Clear state and refresh before redirect
+                    await refreshUserData(session.user.id);
+                    setCart([]);
+                    
+                    // 4. Redirect to UPI App
+                    window.location.href = upiUrl;
+                    
+                    // 5. Navigate to success view (so it's ready when they come back to browser)
+                    setView('ORDER_SUCCESS');
+                    
+                } catch (error: any) {
+                    console.error('Payment Error:', error);
+                    alert("Order placement failed. Please try again.");
+                    setIsPlacingOrder(false);
+                    return;
+                }
+            } else {
+                // COD Flow
+                const savedOrder = await storageService.saveOrder(orderData);
+                setLastCreatedOrder(savedOrder);
+
+                await refreshUserData(session.user.id);
+                setCart([]);
+                setView('ORDER_SUCCESS');
+            }
         } catch (error: any) {
             console.error("Failed to place order:", error);
             alert("Failed to place order: " + (error.message || "Unknown error"));

@@ -69,10 +69,15 @@ import AnalyticsDashboard from '../components/AnalyticsDashboard';
 interface AdminDashboardProps {
     user: User | null;
     onLogout: () => void;
+    isStandaloneLogistic?: boolean;
 }
 
-const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout }) => {
-    const [activeTab, setActiveTab] = useState<'stats' | 'analytics' | 'orders' | 'products' | 'users' | 'authority' | 'sales_mgmt' | 'cod' | 'logistics' | 'settings'>('stats');
+const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, isStandaloneLogistic }) => {
+    const isPrimaryLogistic = user?.role === 'logistic' && user?.role !== 'admin';
+    const storedTab = localStorage.getItem('adminActiveTab');
+    const [activeTab, setActiveTab] = useState<'stats' | 'analytics' | 'orders' | 'products' | 'users' | 'authority' | 'sales_mgmt' | 'cod' | 'logistics' | 'settings'>(
+        isStandaloneLogistic ? 'logistics' : (isPrimaryLogistic ? 'logistics' : (storedTab as any) || 'stats')
+    );
     const [dateFilter, setDateFilter] = useState<'day' | 'week' | 'month' | 'custom'>('week');
     const [startDate, setStartDate] = useState(new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]);
     const [endDate, setEndDate] = useState(new Date().toISOString().split('T')[0]);
@@ -146,6 +151,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout }) => {
     const [secondaryDeliveryDate, setSecondaryDeliveryDate] = useState<number>(() => {
         try { return parseInt(localStorage.getItem('admin_secondary_delivery_date') || '20', 10); } catch { return 20; }
     });
+    const [avatarPresets, setAvatarPresets] = useState<{ id: string; url: string; isActive: boolean }[]>([]);
+    const [isUploadingPreset, setIsUploadingPreset] = useState(false);
     const userSelectRef = useRef<HTMLDivElement>(null);
 
     const toggleDarkMode = () => {
@@ -252,7 +259,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout }) => {
         setError(null);
         try {
             // Concurrent fetches for maximum efficiency
-            const [ordersData, usersData, subsData, authsData, productsData, targetsData, activitiesData, settlementsData] = await Promise.all([
+            const [ordersData, usersData, subsData, authsData, productsData, targetsData, activitiesData, settlementsData, presetsData] = await Promise.all([
                 storageService.getAllOrders(),
                 storageService.getUsers(),
                 storageService.getAllSubscriptions(),
@@ -260,7 +267,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout }) => {
                 storageService.getProducts(),
                 storageService.getSalesTargets(),
                 storageService.getSalesActivities(),
-                storageService.getCODSettlements()
+                storageService.getCODSettlements(),
+                storageService.getAvatarPresets()
             ]);
 
             // Set primary states
@@ -272,6 +280,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout }) => {
             setSalesTargets(targetsData);
             setSalesActivities([...activitiesData].reverse());
             setCodSettlements(settlementsData);
+            setAvatarPresets(presetsData);
 
             // ─── Detect New Orders for Toast Notification ───────────────────
             if (ordersData.length > 0) {
@@ -317,6 +326,27 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout }) => {
             handleAuthError(error);
         }
     };
+
+    const currentUserRoles = authorities.filter(a => a.userId === user?.id).map(a => a.role);
+    const isAdmin = user?.role === 'admin' || currentUserRoles.includes('admin');
+    const isSales = currentUserRoles.includes('sales');
+    const isDelivery = currentUserRoles.includes('delivery');
+    const isLogistic = currentUserRoles.includes('logistic');
+
+    // Automatically set default tab for logistic users if they land on stats
+    useEffect(() => {
+        const userIsLogisticPrimary = user?.role === 'logistic';
+        if ((userIsLogisticPrimary || isLogistic) && !isAdmin && activeTab === 'stats') {
+            setActiveTab('logistics');
+        }
+    }, [isLogistic, isAdmin, activeTab, user?.role]);
+
+    // Save active tab to localStorage so it persists across refreshes
+    useEffect(() => {
+        if (activeTab) {
+            localStorage.setItem('adminActiveTab', activeTab);
+        }
+    }, [activeTab]);
 
     useEffect(() => {
         // Initial data load
@@ -958,6 +988,12 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout }) => {
                                                 <tr key={order.id} className="hover:bg-slate-50 transition-colors">
                                                     <td className="px-6 py-4 whitespace-nowrap">
                                                         <div className="mb-2"><button onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(order.id.toUpperCase()); }} className="group flex flex-shrink-0 items-center justify-center gap-1.5 px-2 py-1 rounded bg-slate-900 hover:bg-slate-800 text-[8px] font-black text-white uppercase tracking-[0.2em] shadow-sm transition-all active:scale-95 focus:ring-2 focus:ring-slate-400" title="Copy Mission ID">{order.id.toUpperCase()} <Copy className="w-2.5 h-2.5 opacity-60 group-hover:opacity-100 transition-opacity" /></button></div>
+                                                        {order.subscriptionId && (
+                                                            <div className="mb-2 flex items-center gap-1.5 px-2 py-0.5 bg-purple-100 border border-purple-200 rounded-md w-fit">
+                                                                <RefreshCw className="w-2.5 h-2.5 text-purple-700 animate-spin-slow" />
+                                                                <span className="text-[8px] font-black text-purple-800 uppercase tracking-widest">Subscription</span>
+                                                            </div>
+                                                        )}
                                                         {order.deliveryOTP && (
                                                             <div className="mt-1 flex items-center gap-1.5 px-1.5 py-0.5 bg-blue-50 border border-blue-100 rounded-md w-fit">
                                                                 <Key className="w-2.5 h-2.5 text-blue-600" />
@@ -1108,8 +1144,10 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout }) => {
                                                         </div>
                                                     </td>
                                                     <td className="px-6 py-4 whitespace-nowrap">
-                                                        <p className="text-xs font-bold text-slate-900">{new Date(order.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}</p>
-                                                        <p className="text-[10px] text-slate-400 font-medium">{new Date(order.createdAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}</p>
+                                                        <p className="text-xs font-black text-indigo-700 uppercase tracking-tight">
+                                                            {new Date(order.deliveryDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+                                                        </p>
+                                                        <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest mt-0.5">Scheduled Delivery</p>
                                                     </td>
                                                 </tr>
                                             );
@@ -1986,7 +2024,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout }) => {
                 return;
             }
 
-            const possibleRoles = ['sales', 'delivery', 'admin'] as const;
+            const possibleRoles = ['sales', 'delivery', 'admin', 'logistic'] as const;
 
             // Determine referral code once (if sales is selected)
             const commonReferralCode = newMemberData.roles.includes('sales')
@@ -2004,7 +2042,9 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout }) => {
                         [{ resource: 'orders', action: 'all' }, { resource: 'products', action: 'all' }, { resource: 'users', action: 'all' }, { resource: 'authority', action: 'all' }, { resource: 'stats', action: 'all' }] :
                         roleId === 'delivery' ?
                             [{ resource: 'orders', action: 'write' }, { resource: 'products', action: 'read' }, { resource: 'users', action: 'read' }] :
-                            [{ resource: 'orders', action: 'write' }, { resource: 'products', action: 'read' }, { resource: 'users', action: 'read' }, { resource: 'stats', action: 'read' }]; // Sales default
+                            roleId === 'logistic' ?
+                                [{ resource: 'orders', action: 'all' }, { resource: 'products', action: 'read' }, { resource: 'users', action: 'read' }, { resource: 'logistic', action: 'all' }] :
+                                [{ resource: 'orders', action: 'write' }, { resource: 'products', action: 'read' }, { resource: 'users', action: 'read' }, { resource: 'stats', action: 'read' }]; // Sales default
 
                     const newAuth: Authority = {
                         id: 'AUTH-' + Math.random().toString(36).substr(2, 9).toUpperCase(),
@@ -2120,7 +2160,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout }) => {
             lastActive?: string;
             roles: Array<{
                 id: string;
-                role: 'admin' | 'sales' | 'delivery';
+                role: 'admin' | 'sales' | 'delivery' | 'logistic';
                 permissions: Permission[];
                 referralCode?: string;
             }>;
@@ -2324,6 +2364,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout }) => {
                                         {[
                                             { id: 'admin', label: 'Admin' },
                                             { id: 'sales', label: 'Sales' },
+                                            { id: 'logistic', label: 'Logistic' },
                                             { id: 'delivery', label: 'Delivery' }
                                         ].map(role => {
                                             const isSelected = newMemberData.roles.includes(role.id);
@@ -2474,7 +2515,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout }) => {
                                                             className={`text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-lg border ${roleData.role === 'admin' ? 'bg-purple-50 text-purple-600 border-purple-100' :
                                                                 roleData.role === 'sales' ? 'bg-green-50 text-green-600 border-green-100' :
                                                                     roleData.role === 'delivery' ? 'bg-blue-50 text-blue-600 border-blue-100' :
-                                                                        'bg-slate-50 text-slate-500 border-slate-100'
+                                                                        roleData.role === 'logistic' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' :
+                                                                            'bg-slate-50 text-slate-500 border-slate-100'
                                                                 }`}
                                                         >
                                                             {roleData.role}
@@ -3229,6 +3271,78 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout }) => {
                             </div>
                         </div>
                     </Card>
+
+                    {/* Avatar Presets Management */}
+                    <Card className="p-8 border-none shadow-xl shadow-slate-200/50 rounded-[2rem] bg-white md:col-span-2">
+                        <div className="flex items-center justify-between mb-6">
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-xl bg-orange-50 text-orange-600 flex items-center justify-center">
+                                    <UserCircle className="w-5 h-5" />
+                                </div>
+                                <div>
+                                    <h3 className="font-serif text-xl font-black text-slate-900">Avatar Presets</h3>
+                                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-0.5">Quick selections for members</p>
+                                </div>
+                            </div>
+                            <label className={`flex items-center gap-2 px-6 py-2.5 rounded-xl bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest cursor-pointer hover:bg-slate-800 transition-all shadow-lg active:scale-95 ${isUploadingPreset ? 'opacity-50 cursor-not-allowed' : ''}`}>
+                                {isUploadingPreset ? <RotateCcw className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
+                                {isUploadingPreset ? 'Uploading...' : 'Upload Preset'}
+                                <input
+                                    type="file"
+                                    className="hidden"
+                                    accept="image/*"
+                                    onChange={async (e) => {
+                                        const file = e.target.files?.[0];
+                                        if (file) {
+                                            setIsUploadingPreset(true);
+                                            try {
+                                                await storageService.uploadAvatarPreset(file);
+                                                const updated = await storageService.getAvatarPresets();
+                                                setAvatarPresets(updated);
+                                            } catch (err: any) {
+                                                console.error(err);
+                                                alert(`Failed to upload preset: ${err.message || 'Unknown error'}`);
+                                            } finally {
+                                                setIsUploadingPreset(false);
+                                                e.target.value = '';
+                                            }
+                                        }
+                                    }}
+                                />
+                            </label>
+                        </div>
+
+                        <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-6">
+                            {avatarPresets.map((preset) => (
+                                <div key={preset.id} className="relative group">
+                                    <div className="aspect-square rounded-2xl overflow-hidden border-2 border-slate-100 bg-slate-50 shadow-sm group-hover:border-orange-200 transition-all">
+                                        <img src={preset.url} alt="Preset" className="w-full h-full object-cover" />
+                                    </div>
+                                    <button
+                                        onClick={async () => {
+                                            if (window.confirm('Delete this preset?')) {
+                                                try {
+                                                    await storageService.deleteAvatarPreset(preset.id, preset.url);
+                                                    setAvatarPresets(prev => prev.filter(p => p.id !== preset.id));
+                                                } catch (err) {
+                                                    console.error(err);
+                                                }
+                                            }
+                                        }}
+                                        className="absolute -top-2 -right-2 w-6 h-6 bg-rose-600 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-lg"
+                                    >
+                                        <Trash2 className="w-3 h-3" />
+                                    </button>
+                                </div>
+                            ))}
+                            {avatarPresets.length === 0 && !isUploadingPreset && (
+                                <div className="col-span-full py-12 flex flex-col items-center justify-center border-2 border-dashed border-slate-100 rounded-[2rem] bg-slate-50/50">
+                                    <UserCircle className="w-10 h-10 text-slate-200 mb-3" />
+                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest text-center px-6">No presets uploaded yet. Add some to help new users choose their profile picture.</p>
+                                </div>
+                            )}
+                        </div>
+                    </Card>
                 </div>
 
                 <div className="pt-8 flex gap-4 border-t border-slate-100 pb-10">
@@ -3259,21 +3373,23 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout }) => {
         );
     };
 
-    const adminProfile = allUsers.find(u => u.name?.toLowerCase().includes("davi") && u.role === "admin")
-        || allUsers.find(u => u.role === "admin")
-        || storageService.getUser();
+    // FIXED: Use current logged-in user profile instead of finding any admin
+    // Priority: user prop > allUsers match > storage fallback
+    const currentUserProfile = user || allUsers.find(u => u.id === user?.id) || storageService.getUser();
 
     return (
         <div className={`flex min-h-screen relative admin-shell ${isDarkMode ? 'admin-dark' : 'admin-light'}`}>
             {/* Mobile Header */}
             <header className="lg:hidden fixed top-0 left-0 right-0 h-16 admin-header border-b flex items-center justify-between px-4 z-40">
                 <div className="flex items-center gap-3">
-                    <button
-                        onClick={() => setIsSidebarOpen(true)}
-                        className="p-2 -ml-2 admin-text-muted hover:admin-bg-subtle rounded-xl transition-colors"
-                    >
-                        <MoreVertical className="w-6 h-6 rotate-90" />
-                    </button>
+                    {(!isLogistic || isAdmin) && (
+                        <button
+                            onClick={() => setIsSidebarOpen(true)}
+                            className="p-2 -ml-2 admin-text-muted hover:admin-bg-subtle rounded-xl transition-colors"
+                        >
+                            <MoreVertical className="w-6 h-6 rotate-90" />
+                        </button>
+                    )}
                     <div className="w-10 h-10 bg-white rounded-full overflow-hidden border admin-border shadow-sm flex items-center justify-center">
                         <img src="/logo.jpg" className="w-full h-full object-cover scale-110" alt="Logo" />
                     </div>
@@ -3291,14 +3407,14 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout }) => {
                             : <Moon className="w-4 h-4" />}
                     </button>
                     <div className="text-right">
-                        <p className="text-[10px] font-black admin-text-primary leading-none">{adminProfile?.name?.split(' ')[0] || 'Admin'}</p>
+                        <p className="text-[10px] font-black admin-text-primary leading-none">{currentUserProfile?.name?.split(' ')[0] || 'Admin'}</p>
                         <p className="text-[8px] font-bold text-green-600">Online</p>
                     </div>
                     <div className="w-10 h-10 rounded-xl bg-green-100 border border-green-200 flex items-center justify-center text-green-700 font-black overflow-hidden">
-                        {adminProfile?.profilePic ? (
-                            <img src={adminProfile.profilePic} className="w-full h-full object-cover" alt="Profile" />
+                        {currentUserProfile?.profilePic ? (
+                            <img src={currentUserProfile.profilePic} className="w-full h-full object-cover" alt="Profile" />
                         ) : (
-                            adminProfile?.name?.charAt(0) || 'A'
+                            currentUserProfile?.name?.charAt(0) || 'A'
                         )}
                     </div>
                 </div>
@@ -3312,162 +3428,178 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout }) => {
                 />
             )}
 
-            {/* Sidebar */}
-            <aside className={`w-72 admin-sidebar border-r p-6 flex flex-col fixed inset-y-0 left-0 z-[60] lg:z-10 transition-transform duration-300 transform lg:translate-x-0 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:static'} h-full lg:h-screen lg:sticky lg:top-0`}>
-                <div className="flex lg:hidden justify-end mb-4">
-                    <button onClick={() => setIsSidebarOpen(false)} className="p-2 admin-text-muted">
-                        <Plus className="w-6 h-6 rotate-45" />
-                    </button>
-                </div>
-                <div className="flex items-center gap-4 mb-10 px-2">
-                    <div className="w-16 h-16 bg-white rounded-full overflow-hidden border-2 border-green-50 shadow-md flex items-center justify-center shrink-0">
-                        <img src="/logo.jpg" className="w-full h-full object-cover scale-110" alt="Logo" />
+            {/* Sidebar - Hidden for logistic-only users */}
+            {(!isLogistic || isAdmin) && !isStandaloneLogistic && (
+                <aside className={`w-72 admin-sidebar border-r p-6 flex flex-col fixed inset-y-0 left-0 z-[60] lg:z-10 transition-transform duration-300 transform lg:translate-x-0 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:static'} h-full lg:h-screen lg:sticky lg:top-0`}>
+                    <div className="flex lg:hidden justify-end mb-4">
+                        <button onClick={() => setIsSidebarOpen(false)} className="p-2 admin-text-muted">
+                            <Plus className="w-6 h-6 rotate-45" />
+                        </button>
                     </div>
-                    <span className="font-serif text-2xl font-black admin-text-primary">Admin</span>
-                </div>
-
-                <nav className="flex-1 space-y-2">
-                    <button
-                        onClick={() => {
-                            setActiveTab('stats');
-                            setIsSidebarOpen(false);
-                        }}
-                        className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl transition-all ${activeTab === 'stats' ? 'bg-green-700 text-white shadow-lg shadow-green-100' : 'text-slate-400 hover:bg-slate-50 hover:text-slate-900'
-                            }`}
-                    >
-                        <BarChart3 className="w-5 h-5" />
-                        <span className="text-[11px] font-black uppercase tracking-widest">Dashboard</span>
-                        {activeTab === 'stats' && <ChevronRight className="w-4 h-4 ml-auto" />}
-                    </button>
-                    <button
-                        onClick={() => {
-                            setActiveTab('analytics');
-                            setIsSidebarOpen(false);
-                        }}
-                        className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl transition-all ${activeTab === 'analytics' ? 'bg-green-700 text-white shadow-lg shadow-green-100' : 'text-slate-400 hover:bg-slate-50 hover:text-slate-900'
-                            }`}
-                    >
-                        <TrendingUp className="w-5 h-5" />
-                        <span className="text-[11px] font-black uppercase tracking-widest">Analytics</span>
-                        {activeTab === 'analytics' && <ChevronRight className="w-4 h-4 ml-auto" />}
-                    </button>
-
-                    <button
-                        onClick={() => {
-                            setActiveTab('orders');
-                            setIsSidebarOpen(false);
-                        }}
-                        className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl transition-all ${activeTab === 'orders' ? 'bg-green-700 text-white shadow-lg shadow-green-100' : 'text-slate-400 hover:bg-slate-50 hover:text-slate-900'
-                            }`}
-                    >
-                        <ShoppingBag className="w-5 h-5" />
-                        <span className="text-[11px] font-black uppercase tracking-widest">All Orders</span>
-                        {activeTab === 'orders' && <ChevronRight className="w-4 h-4 ml-auto" />}
-                    </button>
-                    <button
-                        onClick={() => {
-                            setActiveTab('products');
-                            setIsSidebarOpen(false);
-                        }}
-                        className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl transition-all ${activeTab === 'products' ? 'bg-green-700 text-white shadow-lg shadow-green-100' : 'text-slate-400 hover:bg-slate-50 hover:text-slate-900'}`}
-                    >
-                        <Package className="w-5 h-5" />
-                        <span className="text-[11px] font-black uppercase tracking-widest">Products</span>
-                        {activeTab === 'products' && <ChevronRight className="w-4 h-4 ml-auto" />}
-                    </button>
-                    <button
-                        onClick={() => {
-                            setActiveTab('users');
-                            setIsSidebarOpen(false);
-                        }}
-                        className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl transition-all ${activeTab === 'users' ? 'bg-green-700 text-white shadow-lg shadow-green-100' : 'text-slate-400 hover:bg-slate-50 hover:text-slate-900'}`}
-                    >
-                        <Users className="w-5 h-5" />
-                        <span className="text-[11px] font-black uppercase tracking-widest">Users</span>
-                        {activeTab === 'users' && <ChevronRight className="w-4 h-4 ml-auto" />}
-                    </button>
-                    <button
-                        onClick={() => {
-                            setActiveTab('authority');
-                            setIsSidebarOpen(false);
-                        }}
-                        className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl transition-all ${activeTab === 'authority' ? 'bg-green-700 text-white shadow-lg shadow-green-100' : 'text-slate-400 hover:bg-slate-50 hover:text-slate-900'}`}
-                    >
-                        <Shield className="w-5 h-5" />
-                        <span className="text-[11px] font-black uppercase tracking-widest">Authority</span>
-                        {activeTab === 'authority' && <ChevronRight className="w-4 h-4 ml-auto" />}
-                    </button>
-                    <button
-                        onClick={() => {
-                            setActiveTab('sales_mgmt');
-                            setIsSidebarOpen(false);
-                        }}
-                        className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl transition-all ${activeTab === 'sales_mgmt' ? 'bg-green-700 text-white shadow-lg shadow-green-100' : 'text-slate-400 hover:bg-slate-50 hover:text-slate-900'}`}
-                    >
-                        <Target className="w-5 h-5" />
-                        <span className="text-[11px] font-black uppercase tracking-widest">Sales Force</span>
-                        {activeTab === 'sales_mgmt' && <ChevronRight className="w-4 h-4 ml-auto" />}
-                    </button>
-                    <button
-                        onClick={() => {
-                            setActiveTab('logistics');
-                            setIsSidebarOpen(false);
-                        }}
-                        className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl transition-all ${activeTab === 'logistics' ? 'bg-green-700 text-white shadow-lg shadow-green-100' : 'text-slate-400 hover:bg-slate-50 hover:text-slate-900'}`}
-                    >
-                        <Truck className="w-5 h-5" />
-                        <span className="text-[11px] font-black uppercase tracking-widest">Logistics</span>
-                        {activeTab === 'logistics' && <ChevronRight className="w-4 h-4 ml-auto" />}
-                    </button>
-                    <button
-                        onClick={() => {
-                            setActiveTab('settings');
-                            setIsSidebarOpen(false);
-                        }}
-                        className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl transition-all ${activeTab === 'settings' ? 'bg-green-700 text-white shadow-lg shadow-green-100' : 'text-slate-400 hover:bg-slate-50 hover:text-slate-900'}`}
-                    >
-                        <Settings className="w-5 h-5" />
-                        <span className="text-[11px] font-black uppercase tracking-widest">Settings</span>
-                        {activeTab === 'settings' && <ChevronRight className="w-4 h-4 ml-auto" />}
-                    </button>
-                </nav>
-
-                <div className="pt-6 admin-sidebar-footer space-y-2">
-                    {/* Dark Mode Toggle — Sidebar */}
-                    <button
-                        onClick={toggleDarkMode}
-                        className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl transition-all font-black text-[11px] uppercase tracking-widest ${isDarkMode
-                            ? 'bg-amber-500/10 text-amber-400 hover:bg-amber-500/20'
-                            : 'text-slate-400 hover:bg-slate-50 hover:text-slate-900'
-                            }`}
-                    >
-                        {isDarkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
-                        {isDarkMode ? 'Light Mode' : 'Dark Mode'}
-                        <div className={`ml-auto w-10 h-6 rounded-full transition-all relative ${isDarkMode ? 'bg-amber-500' : 'bg-slate-200'
-                            }`}>
-                            <div className={`absolute top-1 w-4 h-4 rounded-full bg-white shadow-sm transition-all ${isDarkMode ? 'left-5' : 'left-1'
-                                }`} />
+                    <div className="flex items-center gap-4 mb-10 px-2">
+                        <div className="w-16 h-16 bg-white rounded-full overflow-hidden border-2 border-green-50 shadow-md flex items-center justify-center shrink-0">
+                            <img src="/logo.jpg" className="w-full h-full object-cover scale-110" alt="Logo" />
                         </div>
-                    </button>
-                    <button
-                        onClick={() => window.location.href = '/'}
-                        className="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl admin-text-muted hover:admin-bg-subtle hover:admin-text-primary transition-all font-black text-[11px] uppercase tracking-widest"
-                    >
-                        <ShoppingBag className="w-5 h-5" />
-                        View Website
-                    </button>
-                    <button
-                        onClick={onLogout}
-                        className="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl text-red-400 hover:bg-red-50 hover:text-red-600 transition-all font-black text-[11px] uppercase tracking-widest"
-                    >
-                        <LogOut className="w-5 h-5" />
-                        Sign Out
-                    </button>
-                </div>
-            </aside>
+                        <span className="font-serif text-2xl font-black admin-text-primary">Admin</span>
+                    </div>
 
-            {/* Main Content */}
-            <main className="flex-1 lg:ml-0 flex flex-col h-screen mt-16 lg:mt-0 overflow-hidden admin-main">
+                    <nav className="flex-1 space-y-2">
+                        <button
+                            onClick={() => {
+                                setActiveTab('stats');
+                                setIsSidebarOpen(false);
+                            }}
+                            className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl transition-all ${activeTab === 'stats' ? 'bg-green-700 text-white shadow-lg shadow-green-100' : 'text-slate-400 hover:bg-slate-50 hover:text-slate-900'
+                                }`}
+                        >
+                            <BarChart3 className="w-5 h-5" />
+                            <span className="text-[11px] font-black uppercase tracking-widest">Dashboard</span>
+                            {activeTab === 'stats' && <ChevronRight className="w-4 h-4 ml-auto" />}
+                        </button>
+
+                        {isAdmin && (
+                            <>
+                                <button
+                                    onClick={() => {
+                                        setActiveTab('analytics');
+                                        setIsSidebarOpen(false);
+                                    }}
+                                    className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl transition-all ${activeTab === 'analytics' ? 'bg-green-700 text-white shadow-lg shadow-green-100' : 'text-slate-400 hover:bg-slate-50 hover:text-slate-900'
+                                        }`}
+                                >
+                                    <TrendingUp className="w-5 h-5" />
+                                    <span className="text-[11px] font-black uppercase tracking-widest">Analytics</span>
+                                    {activeTab === 'analytics' && <ChevronRight className="w-4 h-4 ml-auto" />}
+                                </button>
+
+                                <button
+                                    onClick={() => {
+                                        setActiveTab('orders');
+                                        setIsSidebarOpen(false);
+                                    }}
+                                    className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl transition-all ${activeTab === 'orders' ? 'bg-green-700 text-white shadow-lg shadow-green-100' : 'text-slate-400 hover:bg-slate-50 hover:text-slate-900'
+                                        }`}
+                                >
+                                    <ShoppingBag className="w-5 h-5" />
+                                    <span className="text-[11px] font-black uppercase tracking-widest">All Orders</span>
+                                    {activeTab === 'orders' && <ChevronRight className="w-4 h-4 ml-auto" />}
+                                </button>
+                                <button
+                                    onClick={() => {
+                                        setActiveTab('products');
+                                        setIsSidebarOpen(false);
+                                    }}
+                                    className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl transition-all ${activeTab === 'products' ? 'bg-green-700 text-white shadow-lg shadow-green-100' : 'text-slate-400 hover:bg-slate-50 hover:text-slate-900'}`}
+                                >
+                                    <Package className="w-5 h-5" />
+                                    <span className="text-[11px] font-black uppercase tracking-widest">Products</span>
+                                    {activeTab === 'products' && <ChevronRight className="w-4 h-4 ml-auto" />}
+                                </button>
+                                <button
+                                    onClick={() => {
+                                        setActiveTab('users');
+                                        setIsSidebarOpen(false);
+                                    }}
+                                    className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl transition-all ${activeTab === 'users' ? 'bg-green-700 text-white shadow-lg shadow-green-100' : 'text-slate-400 hover:bg-slate-50 hover:text-slate-900'}`}
+                                >
+                                    <Users className="w-5 h-5" />
+                                    <span className="text-[11px] font-black uppercase tracking-widest">Users</span>
+                                    {activeTab === 'users' && <ChevronRight className="w-4 h-4 ml-auto" />}
+                                </button>
+                                <button
+                                    onClick={() => {
+                                        setActiveTab('authority');
+                                        setIsSidebarOpen(false);
+                                    }}
+                                    className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl transition-all ${activeTab === 'authority' ? 'bg-green-700 text-white shadow-lg shadow-green-100' : 'text-slate-400 hover:bg-slate-50 hover:text-slate-900'}`}
+                                >
+                                    <Shield className="w-5 h-5" />
+                                    <span className="text-[11px] font-black uppercase tracking-widest">Authority</span>
+                                    {activeTab === 'authority' && <ChevronRight className="w-4 h-4 ml-auto" />}
+                                </button>
+                            </>
+                        )}
+
+                        {(isAdmin || isSales) && (
+                            <button
+                                onClick={() => {
+                                    setActiveTab('sales_mgmt');
+                                    setIsSidebarOpen(false);
+                                }}
+                                className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl transition-all ${activeTab === 'sales_mgmt' ? 'bg-green-700 text-white shadow-lg shadow-green-100' : 'text-slate-400 hover:bg-slate-50 hover:text-slate-900'}`}
+                            >
+                                <Target className="w-5 h-5" />
+                                <span className="text-[11px] font-black uppercase tracking-widest">Sales Force</span>
+                                {activeTab === 'sales_mgmt' && <ChevronRight className="w-4 h-4 ml-auto" />}
+                            </button>
+                        )}
+
+                        {(isAdmin || isLogistic) && (
+                            <button
+                                onClick={() => {
+                                    setActiveTab('logistics');
+                                    setIsSidebarOpen(false);
+                                }}
+                                className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl transition-all ${activeTab === 'logistics' ? 'bg-green-700 text-white shadow-lg shadow-green-100' : 'text-slate-400 hover:bg-slate-50 hover:text-slate-900'}`}
+                            >
+                                <Truck className="w-5 h-5" />
+                                <span className="text-[11px] font-black uppercase tracking-widest">Logistics</span>
+                                {activeTab === 'logistics' && <ChevronRight className="w-4 h-4 ml-auto" />}
+                            </button>
+                        )}
+
+                        {isAdmin && (
+                            <button
+                                onClick={() => {
+                                    setActiveTab('settings');
+                                    setIsSidebarOpen(false);
+                                }}
+                                className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl transition-all ${activeTab === 'settings' ? 'bg-green-700 text-white shadow-lg shadow-green-100' : 'text-slate-400 hover:bg-slate-50 hover:text-slate-900'}`}
+                            >
+                                <Settings className="w-5 h-5" />
+                                <span className="text-[11px] font-black uppercase tracking-widest">Settings</span>
+                                {activeTab === 'settings' && <ChevronRight className="w-4 h-4 ml-auto" />}
+                            </button>
+                        )}
+                    </nav>
+
+                    <div className="pt-6 admin-sidebar-footer space-y-2">
+                        {/* Dark Mode Toggle — Sidebar */}
+                        <button
+                            onClick={toggleDarkMode}
+                            className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl transition-all font-black text-[11px] uppercase tracking-widest ${isDarkMode
+                                ? 'bg-amber-500/10 text-amber-400 hover:bg-amber-500/20'
+                                : 'text-slate-400 hover:bg-slate-50 hover:text-slate-900'
+                                }`}
+                        >
+                            {isDarkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+                            {isDarkMode ? 'Light Mode' : 'Dark Mode'}
+                            <div className={`ml-auto w-10 h-6 rounded-full transition-all relative ${isDarkMode ? 'bg-amber-500' : 'bg-slate-200'
+                                }`}>
+                                <div className={`absolute top-1 w-4 h-4 rounded-full bg-white shadow-sm transition-all ${isDarkMode ? 'left-5' : 'left-1'
+                                    }`} />
+                            </div>
+                        </button>
+                        <button
+                            onClick={() => window.location.href = '/'}
+                            className="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl admin-text-muted hover:admin-bg-subtle hover:admin-text-primary transition-all font-black text-[11px] uppercase tracking-widest"
+                        >
+                            <ShoppingBag className="w-5 h-5" />
+                            View Website
+                        </button>
+                        <button
+                            onClick={onLogout}
+                            className="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl text-red-400 hover:bg-red-50 hover:text-red-600 transition-all font-black text-[11px] uppercase tracking-widest"
+                        >
+                            <LogOut className="w-5 h-5" />
+                            Sign Out
+                        </button>
+                    </div>
+                </aside>
+            )}
+
+            {/* Main Content - Full width for logistic-only users */}
+            <main className={`flex-1 flex flex-col h-screen mt-16 lg:mt-0 overflow-hidden admin-main ${!isLogistic || isAdmin ? 'lg:ml-0' : 'lg:ml-0'}`}>
                 <header className="flex-none p-4 md:p-6 pb-2 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6 admin-header">
 
                     <div>
@@ -3478,8 +3610,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout }) => {
                             {activeTab === 'users' && "User Directory"}
                             {activeTab === 'analytics' && "Business Intelligence"}
                             {activeTab === 'authority' && "Access Control"}
-
                             {activeTab === 'sales_mgmt' && "Sales Management"}
+                            {activeTab === 'logistics' && "Logistics Overview"}
                         </h1>
                         <p className="text-slate-400 text-xs font-bold uppercase tracking-[0.2em] mt-2">
                             {activeTab === 'stats' && "System statistics & performance"}
@@ -3488,8 +3620,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout }) => {
                             {activeTab === 'users' && "Manage your registered community"}
                             {activeTab === 'analytics' && "Deep insights into your business growth"}
                             {activeTab === 'authority' && "Control system access & permissions"}
-
                             {activeTab === 'sales_mgmt' && "Assign targets & track executive performance"}
+                            {activeTab === 'logistics' && "Manage fleet, routing and orders"}
                         </p>
                     </div>
                     <div className="flex items-center gap-4">
@@ -3522,14 +3654,14 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout }) => {
                             onClick={() => window.location.href = '/'}
                         >
                             <div className="text-right hidden md:block">
-                                <p className="text-xs font-black text-slate-900 group-hover:text-green-700 transition-colors">{adminProfile?.name || 'Super Admin'}</p>
+                                <p className="text-xs font-black text-slate-900 group-hover:text-green-700 transition-colors">{currentUserProfile?.name || 'Super Admin'}</p>
                                 <p className="text-[10px] font-bold text-green-700">Online</p>
                             </div>
                             <div className="w-10 h-10 rounded-xl bg-green-100 border border-green-200 flex items-center justify-center text-green-700 font-black overflow-hidden relative group-hover:scale-105 transition-transform">
-                                {adminProfile?.profilePic ? (
-                                    <img src={adminProfile.profilePic} className="w-full h-full object-cover" alt="Profile" />
+                                {currentUserProfile?.profilePic ? (
+                                    <img src={currentUserProfile.profilePic} className="w-full h-full object-cover" alt="Profile" />
                                 ) : (
-                                    adminProfile?.name?.charAt(0) || 'A'
+                                    currentUserProfile?.name?.charAt(0) || 'A'
                                 )}
                             </div>
                         </div>
@@ -3892,6 +4024,10 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout }) => {
                 return o;
             });
             setOrders(updatedOrders);
+            
+            if (selectedMissionOrder && selectedMissionOrder.id.toLowerCase() === orderIdLower) {
+                setSelectedMissionOrder(prev => prev ? { ...prev, deliveryPersonId: deliveryPersonId } : null);
+            }
 
             const targetOrder = updatedOrders.find(o => o.id?.toLowerCase() === orderIdLower);
             if (targetOrder) {
@@ -4085,6 +4221,31 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout }) => {
             }
         };
 
+        const handleMarkAsDelivered = async (orderId: string) => {
+            if (!window.confirm('Mark this order as Delivered?')) return;
+
+            const updatedOrders = orders.map(o => {
+                if (o.id === orderId) {
+                    return { ...o, status: 'delivered' as const };
+                }
+                return o;
+            });
+            setOrders(updatedOrders);
+
+            const targetOrder = updatedOrders.find(o => o.id === orderId);
+            if (targetOrder) {
+                try {
+                    await storageService.saveOrder(targetOrder);
+                    await notifyOrderStatusChange(targetOrder.userId, orderId, 'delivered').catch(() => { });
+                    storageService.publishOrderStatusUpdate(orderId, 'delivered', targetOrder.userId).catch(() => { });
+                } catch (error) {
+                    console.error("Failed to update status:", error);
+                    alert('Failed to update status.');
+                    fetchData();
+                }
+            }
+        };
+
 
 
         const staffCODStats = codSettlements.reduce((acc, s) => {
@@ -4104,20 +4265,9 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout }) => {
 
         return (
             <div className={`animate-fade-in relative ${activeTab === 'logistics' ? 'h-full flex flex-col overflow-hidden pb-4 gap-4' : 'space-y-4'}`}>
-                {/* Logistics Command Header */}
-                {/* Simple Professional Logistics Header */}
-                <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 bg-white px-8 py-6 rounded-3xl border border-slate-200 shadow-sm relative overflow-hidden">
-                    <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 rounded-xl bg-indigo-600 flex items-center justify-center shadow-lg shadow-indigo-100">
-                            <Truck className="w-6 h-6 text-white" />
-                        </div>
-                        <div>
-                            <h2 className="text-xl font-bold text-slate-900 tracking-tight">Logistics Overview</h2>
-                            <p className="text-xs text-slate-500 font-medium">Manage fleet, routing and orders</p>
-                        </div>
-                    </div>
-
-                    <div className="flex bg-slate-100 p-1.5 rounded-2xl w-full lg:w-fit gap-1">
+                {/* Logistics Command Header - Title moved to main app header */}
+                <div className="flex">
+                    <div className="flex bg-slate-100 p-1.5 rounded-2xl w-full lg:w-fit gap-1 mb-2">
                         {[
                             { id: 'overview', icon: <Users className="w-4 h-4" />, label: 'Fleet' },
                             { id: 'routing', icon: <MapPin className="w-4 h-4" />, label: 'Routing' },
@@ -4322,7 +4472,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout }) => {
                                                     const customer = allUsers.find(u => u.id === order.userId);
                                                     const assignedAgent = allDeliveryStaff.find(s => s.id === order.deliveryPersonId) ||
                                                         (customer?.assignedDeliveryPersonId ? allDeliveryStaff.find(s => s.id === customer.assignedDeliveryPersonId) : null);
-                                                    const canConfirm = !!assignedAgent;
+                                                    const canConfirm = !!(order.deliveryPersonId || customer?.assignedDeliveryPersonId);
                                                     const orderIDFormatted = (order.id || '').toUpperCase();
 
                                                     return (
@@ -4408,13 +4558,12 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout }) => {
                                                                 <div className="lg:col-span-3 flex flex-col gap-2">
                                                                     {/* Row 1: Status badge + Eye */}
                                                                     <div className="flex items-center justify-between gap-2">
-                                                                        <span className={`text-[9px] font-black px-2.5 py-1 rounded-lg uppercase tracking-wide border shadow-sm whitespace-nowrap ${
-                                                                            order.status === 'delivered' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' :
+                                                                        <span className={`text-[9px] font-black px-2.5 py-1 rounded-lg uppercase tracking-wide border shadow-sm whitespace-nowrap ${order.status === 'delivered' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' :
                                                                             order.status === 'pending' ? 'bg-amber-50 text-amber-700 border-amber-100' :
-                                                                            order.status === 'confirmed' ? 'bg-indigo-50 text-indigo-700 border-indigo-100' :
-                                                                            order.status === 'out_for_delivery' ? 'bg-blue-50 text-blue-700 border-blue-100' :
-                                                                            'bg-slate-50 text-slate-600 border-slate-100'
-                                                                        }`}>
+                                                                                order.status === 'confirmed' ? 'bg-indigo-50 text-indigo-700 border-indigo-100' :
+                                                                                    order.status === 'out_for_delivery' ? 'bg-blue-50 text-blue-700 border-blue-100' :
+                                                                                        'bg-slate-50 text-slate-600 border-slate-100'
+                                                                            }`}>
                                                                             {order.status.replace(/_/g, ' ')}
                                                                         </span>
                                                                         <button
@@ -4436,21 +4585,36 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout }) => {
                                                                             <option value="">Agent</option>
                                                                             {deliveryStaff.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
                                                                         </select>
-                                                                        {order.status === 'pending' && (
+                                                                        {order.status === 'pending' && canConfirm && (
                                                                             <button
                                                                                 onClick={() => handleConfirmOrder(order.id)}
-                                                                                disabled={!canConfirm}
-                                                                                className={`shrink-0 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${canConfirm ? 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-md active:scale-95' : 'bg-slate-100 text-slate-400 cursor-not-allowed border border-slate-200'}`}
+                                                                                className={`shrink-0 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap bg-indigo-600 text-white hover:bg-indigo-700 shadow-md active:scale-95`}
                                                                             >
                                                                                 Confirm
                                                                             </button>
                                                                         )}
-                                                                        {order.status === 'returned' && (
+                                                                        {(order.status === 'confirmed' || order.status === 'assigned') && (
                                                                             <button
-                                                                                onClick={() => handleReturnOrder(order.id)}
-                                                                                className="shrink-0 px-3 py-1.5 bg-rose-600 text-white rounded-lg text-[10px] font-black uppercase tracking-widest hover:bg-rose-700 transition-all"
+                                                                                onClick={() => handleSetOutForDelivery(order.id)}
+                                                                                className={`shrink-0 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap bg-blue-600 text-white hover:bg-blue-700 shadow-md active:scale-95`}
                                                                             >
-                                                                                Return
+                                                                                Dispatch
+                                                                            </button>
+                                                                        )}
+                                                                        {order.status === 'out_for_delivery' && (
+                                                                            <button
+                                                                                onClick={() => handleMarkAsDelivered(order.id)}
+                                                                                className={`shrink-0 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap bg-emerald-600 text-white hover:bg-emerald-700 shadow-md active:scale-95`}
+                                                                            >
+                                                                                Deliver
+                                                                            </button>
+                                                                        )}
+                                                                        {['returned', 'attempted', 'cancelled'].includes(order.status) && !order.returnConfirmed && (
+                                                                            <button
+                                                                                onClick={() => handleConfirmReturn(order.id)}
+                                                                                className="shrink-0 px-3 py-1.5 bg-rose-600 text-white rounded-lg text-[10px] font-black uppercase tracking-widest hover:bg-rose-700 transition-all shadow-md active:scale-95"
+                                                                            >
+                                                                                Confirm Return
                                                                             </button>
                                                                         )}
                                                                     </div>
@@ -5050,16 +5214,26 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout }) => {
                                                         <option key={s.id} value={s.id} className="bg-slate-900">{s.name}</option>
                                                     ))}
                                                 </select>
-                                                {selectedMissionOrder.status === 'pending' && (
+                                                {selectedMissionOrder.status === 'pending' && selectedMissionOrder.deliveryPersonId && (
                                                     <button
                                                         onClick={() => {
                                                             handleConfirmOrder(selectedMissionOrder.id);
                                                             setSelectedMissionOrder(null);
                                                         }}
-                                                        disabled={!selectedMissionOrder.deliveryPersonId}
-                                                        className="px-6 py-2 bg-indigo-500 hover:bg-indigo-600 disabled:bg-slate-700 disabled:text-slate-500 rounded-lg text-sm font-bold transition-all"
+                                                        className="px-6 py-2 bg-indigo-500 hover:bg-indigo-600 rounded-lg text-sm font-bold transition-all text-white shadow-md active:scale-95"
                                                     >
                                                         Confirm Order
+                                                    </button>
+                                                )}
+                                                {['returned', 'attempted', 'cancelled'].includes(selectedMissionOrder.status) && !selectedMissionOrder.returnConfirmed && (
+                                                    <button
+                                                        onClick={() => {
+                                                            handleConfirmReturn(selectedMissionOrder.id);
+                                                            setSelectedMissionOrder(null);
+                                                        }}
+                                                        className="px-6 py-2 bg-rose-600 hover:bg-rose-700 rounded-lg text-sm font-bold transition-all text-white shadow-md active:scale-95"
+                                                    >
+                                                        Confirm Return
                                                     </button>
                                                 )}
                                             </div>

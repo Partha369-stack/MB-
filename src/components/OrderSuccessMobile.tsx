@@ -15,7 +15,7 @@ const OrderSuccessMobile: React.FC<OrderSuccessMobileProps> = ({
     // Derived states based on actual order or default fallbacks
     const totalAmount = order?.total || 704;
     const itemCount = order?.items?.reduce((acc, item) => acc + item.quantity, 0) || 6;
-    const paymentMethod = order?.paymentMethod === 'ONLINE' ? 'Online Payment' : 'Cash on Delivery';
+    const paymentMethod = (order?.paymentMethod === 'Online' || (order as any)?.paymentMethod === 'ONLINE') ? 'Online Payment' : 'Cash on Delivery';
     const deliveryOTP = order?.deliveryOTP || '1477';
     const orderId = order?.id || 'MB829141';
 

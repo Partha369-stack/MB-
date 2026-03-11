@@ -187,16 +187,8 @@ export const UserAuthEnhanced: React.FC<UserAuthProps> = ({
         setError(null);
 
         try {
-            // Get GPS coordinates
-            const position = await new Promise<GeolocationPosition>((resolve, reject) => {
-                navigator.geolocation.getCurrentPosition(resolve, reject, {
-                    enableHighAccuracy: true,
-                    timeout: 10000,
-                    maximumAge: 0
-                });
-            });
-
-            const { latitude: lat, longitude: lng } = position.coords;
+            const position = await locationService.getCurrentLocation();
+            const { latitude: lat, longitude: lng } = position;
             setLatitude(lat);
             setLongitude(lng);
 
@@ -211,15 +203,7 @@ export const UserAuthEnhanced: React.FC<UserAuthProps> = ({
 
         } catch (error: any) {
             console.error('Location detection error:', error);
-            if (error.code === 1) {
-                setError('Location permission denied. Please enable location access in your browser settings.');
-            } else if (error.code === 2) {
-                setError('Location unavailable. Please enter address manually.');
-            } else if (error.code === 3) {
-                setError('Location request timeout. Please try again or enter address manually.');
-            } else {
-                setError('Failed to detect location. Please enter address manually.');
-            }
+            setError(error.message || 'Failed to detect location. Please enter address manually.');
         } finally {
             setIsDetectingLocation(false);
         }

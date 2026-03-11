@@ -2,6 +2,7 @@ import React, { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { User, UserAddress } from '../types';
 import { storageService } from '../services/storageService';
+import { locationService } from '../services/locationService';
 import { useAppContext } from '../contexts/AppContext';
 
 interface ProfileMobileProps {
@@ -25,7 +26,7 @@ function Spinner() {
 }
 
 const ProfileMobile: React.FC<ProfileMobileProps> = ({ user, setUser, onLogout }) => {
-    const { setView } = useAppContext();
+    const { setView, allAuthorities } = useAppContext();
     const navigate = useNavigate();
 
     type EditField = 'pic' | 'phone' | 'address' | null;
@@ -41,7 +42,7 @@ const ProfileMobile: React.FC<ProfileMobileProps> = ({ user, setUser, onLogout }
     const [editPincode, setEditPincode] = useState('');
     const [editLat, setEditLat] = useState<number | undefined>(undefined);
     const [editLng, setEditLng] = useState<number | undefined>(undefined);
-    
+
     // Manage Addresses specific state
     const [showAddressForm, setShowAddressForm] = useState(false);
     const [editingAddressId, setEditingAddressId] = useState<string | null>(null);
@@ -54,6 +55,7 @@ const ProfileMobile: React.FC<ProfileMobileProps> = ({ user, setUser, onLogout }
 
     const picInputRef = useRef<HTMLInputElement>(null);
     const phoneInputRef = useRef<HTMLInputElement>(null);
+
 
     const openEdit = (field: EditField) => {
         if (field === 'phone') {
@@ -112,16 +114,16 @@ const ProfileMobile: React.FC<ProfileMobileProps> = ({ user, setUser, onLogout }
                 newAddresses = newAddresses.map(a => ({ ...a, isDefault: a.id === savedAddr.id }));
             }
 
-            const updatedUser = { 
-                ...user, 
+            const updatedUser = {
+                ...user,
                 addresses: newAddresses,
-                address: savedAddr.isDefault ? finalStr : user.address 
+                address: savedAddr.isDefault ? finalStr : user.address
             };
 
             await storageService.saveUserProfile(updatedUser);
             storageService.setUser(updatedUser);
             setUser(updatedUser);
-            
+
             setShowAddressForm(false);
             setEditingAddressId(null);
         } catch (e) {
@@ -137,13 +139,13 @@ const ProfileMobile: React.FC<ProfileMobileProps> = ({ user, setUser, onLogout }
         try {
             await storageService.deleteUserAddress(id);
             const remaining = user.addresses?.filter(a => a.id !== id) || [];
-            
+
             // If we deleted default and there are others left, maybe just let the user pick next time
             // Or auto set first to default. Let's keep it simple.
             const updatedUser = { ...user, addresses: remaining };
             setUser(updatedUser);
             storageService.setUser(updatedUser);
-        } catch(e) { console.error("Error deleting", e) }
+        } catch (e) { console.error("Error deleting", e) }
     };
 
     const handleSetPrimary = async (addr: UserAddress) => {
@@ -152,12 +154,12 @@ const ProfileMobile: React.FC<ProfileMobileProps> = ({ user, setUser, onLogout }
             const updatedAddr = await storageService.saveUserAddress({ ...addr, isDefault: true });
             const updatedAddresses = user.addresses?.map(a => ({ ...a, isDefault: a.id === updatedAddr.id })) || [];
             const fullAddrStr = [addr.houseNo, addr.areaOrPara, addr.village, addr.postalCode].filter(Boolean).join(', ');
-            
+
             const updatedUser = { ...user, addresses: updatedAddresses, address: fullAddrStr };
             await storageService.saveUserProfile(updatedUser);
             setUser(updatedUser);
             storageService.setUser(updatedUser);
-        } catch(e) { console.error(e) }
+        } catch (e) { console.error(e) }
     };
 
     const handleEditAddressItem = (addr: UserAddress) => {
@@ -205,6 +207,7 @@ const ProfileMobile: React.FC<ProfileMobileProps> = ({ user, setUser, onLogout }
         }
     };
 
+
     const cancelEdit = () => {
         if (showAddressForm) {
             setShowAddressForm(false);
@@ -227,51 +230,36 @@ const ProfileMobile: React.FC<ProfileMobileProps> = ({ user, setUser, onLogout }
         setShowAddressForm(true);
     };
 
-    const detectLocation = () => {
-        if (!navigator.geolocation) {
-            alert('Geolocation is not supported by your browser');
-            return;
-        }
-        
+    const detectLocation = async () => {
         setDetectingLocation(true);
-        navigator.geolocation.getCurrentPosition(
-            async (position) => {
-                try {
-                    const { latitude, longitude } = position.coords;
-                    const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`);
-                    if (!res.ok) throw new Error('Network response was not ok');
-                    const data = await res.json();
-                    
-                    if (data && data.address) {
-                        const addr = data.address;
-                        setEditVillage(addr.village || addr.suburb || addr.town || addr.city || '');
-                        setEditArea(addr.neighbourhood || addr.residential || addr.county || '');
-                        setEditPincode(addr.postcode || '');
-                        setEditHouseNo(addr.house_number || '');
-                        setEditLat(latitude);
-                        setEditLng(longitude);
-                        setEditAddress(data.display_name || '');
-                    } else if (data && data.display_name) {
-                        setEditAddress(data.display_name);
-                        setEditLat(latitude);
-                        setEditLng(longitude);
-                    } else {
-                        throw new Error('No address found');
-                    }
-                } catch (error) {
-                    console.error('Error detecting location:', error);
-                    alert('Could not determine address from your location. Please try manually entering it.');
-                } finally {
-                    setDetectingLocation(false);
-                }
-            },
-            (error) => {
-                console.error('Geolocation error:', error);
-                alert('We need permission to access your location. Please check your browser settings.');
-                setDetectingLocation(false);
-            },
-            { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
-        );
+        try {
+            const position = await locationService.getCurrentLocation();
+            const { latitude, longitude } = position;
+            
+            const addrDetails = await locationService.reverseGeocode(latitude, longitude);
+            
+            if (addrDetails && addrDetails.fullAddress) {
+                setEditVillage(addrDetails.village || '');
+                setEditArea(addrDetails.area || '');
+                setEditPincode(addrDetails.postalCode || '');
+                // We don't necessarily have house number from reverse geocode easily but we can try
+                setEditLat(latitude);
+                setEditLng(longitude);
+                setEditAddress(addrDetails.fullAddress);
+            } else {
+                throw new Error('No address found for these coordinates');
+            }
+        } catch (error: any) {
+            console.error('Location error:', error);
+            const msg = error.message || 'An error occurred while detecting location.';
+            if (msg.toLowerCase().includes('permission')) {
+                alert('We need permission to access your location. Please check your browser settings and ensured it is enabled in your device settings.');
+            } else {
+                alert(msg);
+            }
+        } finally {
+            setDetectingLocation(false);
+        }
     };
 
     if (editField === 'phone') {
@@ -304,7 +292,7 @@ const ProfileMobile: React.FC<ProfileMobileProps> = ({ user, setUser, onLogout }
                             </p>
                         </div>
                     </div>
-                    
+
                     <section className="space-y-4">
                         <div className="flex items-center justify-between px-1">
                             <h2 className="text-base font-bold text-slate-900">Saved Numbers</h2>
@@ -333,7 +321,7 @@ const ProfileMobile: React.FC<ProfileMobileProps> = ({ user, setUser, onLogout }
                                     <button onClick={() => phoneInputRef.current?.focus()} className="text-xs text-left font-bold text-[#2bee2b] hover:underline">Edit</button>
                                 </div>
                             </div>
-                            
+
                             {isEditingSecondary ? (
                                 <div className="flex items-center gap-4 bg-white p-4 rounded-xl shadow-sm border border-slate-100">
                                     <div className="flex items-center justify-center rounded-lg bg-slate-100 text-slate-500 shrink-0 size-12">
@@ -355,11 +343,11 @@ const ProfileMobile: React.FC<ProfileMobileProps> = ({ user, setUser, onLogout }
                                         <p className="text-slate-500 text-sm mt-0.5">Work / Other phone</p>
                                     </div>
                                     <div className="flex flex-col gap-2 shrink-0">
-                                        <button 
+                                        <button
                                             onClick={() => {
                                                 setEditSecondaryPhone('');
                                                 setIsEditingSecondary(false);
-                                            }} 
+                                            }}
                                             className="text-xs text-left font-bold text-slate-400 hover:text-red-500"
                                         >
                                             Remove
@@ -367,7 +355,7 @@ const ProfileMobile: React.FC<ProfileMobileProps> = ({ user, setUser, onLogout }
                                     </div>
                                 </div>
                             ) : (
-                                <button 
+                                <button
                                     onClick={() => setIsEditingSecondary(true)}
                                     className="w-full flex items-center justify-center gap-2 p-4 border-2 border-dashed border-[#2bee2b]/30 rounded-xl text-[#2bee2b] font-bold hover:bg-[#2bee2b]/5 transition-colors"
                                 >
@@ -378,7 +366,7 @@ const ProfileMobile: React.FC<ProfileMobileProps> = ({ user, setUser, onLogout }
                         </div>
                     </section>
                     <section className="pt-4 pb-20">
-                        <button 
+                        <button
                             onClick={savePhone}
                             disabled={savingPhone || editPhone.length < 10}
                             className="w-full bg-[#2bee2b] text-slate-900 font-bold py-4 rounded-xl shadow-lg shadow-[#2bee2b]/20 active:scale-[0.98] transition-transform flex items-center justify-center gap-2 disabled:opacity-50"
@@ -423,7 +411,7 @@ const ProfileMobile: React.FC<ProfileMobileProps> = ({ user, setUser, onLogout }
                 <div className="flex-1 overflow-y-auto px-4 py-6">
                     <div className="flex items-center justify-between mb-4">
                         <h2 className="text-lg font-bold text-slate-900">Saved Addresses</h2>
-                        <button 
+                        <button
                             onClick={handleAddNewAddress}
                             className="text-[#2bee2b] font-semibold text-sm flex items-center gap-1 hover:opacity-80"
                         >
@@ -432,7 +420,7 @@ const ProfileMobile: React.FC<ProfileMobileProps> = ({ user, setUser, onLogout }
                     </div>
 
                     {!showAddressForm && (
-                        <button 
+                        <button
                             onClick={() => {
                                 handleAddNewAddress();
                                 setTimeout(() => detectLocation(), 0);
@@ -457,7 +445,7 @@ const ProfileMobile: React.FC<ProfileMobileProps> = ({ user, setUser, onLogout }
 
                     {showAddressForm ? (
                         <div className="space-y-4 pb-20 mt-4">
-                            <button 
+                            <button
                                 onClick={detectLocation}
                                 disabled={detectingLocation}
                                 className="w-full bg-slate-100 hover:bg-slate-200 transition-colors rounded-xl py-3 px-4 flex items-center gap-3 group text-slate-700 disabled:opacity-75"
@@ -528,7 +516,7 @@ const ProfileMobile: React.FC<ProfileMobileProps> = ({ user, setUser, onLogout }
                             </div>
 
                             <div className="pt-4 pb-24">
-                                <button 
+                                <button
                                     onClick={saveAddress}
                                     disabled={savingAddress || (!editVillage.trim() && !editArea.trim() && !editAddress.trim())}
                                     className="w-full bg-[#2bee2b] text-slate-900 font-bold py-4 rounded-xl shadow-xl shadow-[#2bee2b]/20 active:scale-[0.98] transition-all disabled:opacity-50 flex items-center justify-center gap-2"
@@ -568,16 +556,16 @@ const ProfileMobile: React.FC<ProfileMobileProps> = ({ user, setUser, onLogout }
                                             </p>
                                         </div>
                                     </div>
-                                    
+
                                     <div className="flex gap-3 mt-4 pt-4 border-t border-slate-100">
-                                        <button 
+                                        <button
                                             onClick={() => handleEditAddressItem(addr)}
                                             className="flex-1 text-sm font-semibold text-slate-600 flex items-center justify-center gap-2 hover:text-[#2bee2b] transition-colors"
                                         >
                                             <span className="material-symbols-outlined text-lg">edit</span> Edit
                                         </button>
                                         <div className="w-px h-4 bg-slate-200 self-center"></div>
-                                        <button 
+                                        <button
                                             onClick={(e) => handleDeleteAddress(addr.id, e)}
                                             className="flex-1 text-sm font-semibold text-slate-400 flex items-center justify-center gap-2 hover:text-red-500 transition-colors"
                                         >
@@ -597,15 +585,26 @@ const ProfileMobile: React.FC<ProfileMobileProps> = ({ user, setUser, onLogout }
         <div className="relative flex h-auto min-h-screen pb-20 w-full flex-col bg-white overflow-x-hidden font-['Plus_Jakarta_Sans',sans-serif]">
             <style>{`
                 .material-symbols-outlined {
+                    font-family: 'Material Symbols Outlined';
                     font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+                    display: inline-block;
+                    line-height: 1;
+                    text-transform: none;
+                    letter-spacing: normal;
+                    word-wrap: normal;
+                    white-space: nowrap;
+                    direction: ltr;
+                    font-size: inherit;
                 }
                 @keyframes slideUp {
                     from { transform: translateY(16px); opacity: 0; }
                     to   { transform: translateY(0);    opacity: 1; }
                 }
-                .slide-up { animation: slideUp 0.22s ease both; }
+                .slide-up { animation: slideUp 0.15s ease both; }
+                .no-scrollbar::-webkit-scrollbar { display: none; }
+                .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
             `}</style>
-            
+
             {/* Header */}
             <div className="flex items-center p-4 pb-2 justify-between">
                 <div className="text-slate-900 flex size-12 shrink-0 items-center justify-center cursor-pointer">
@@ -622,7 +621,7 @@ const ProfileMobile: React.FC<ProfileMobileProps> = ({ user, setUser, onLogout }
                         <div className="relative bg-white rounded-full">
                             <label className="cursor-pointer relative block">
                                 <div className="bg-center bg-no-repeat aspect-square bg-cover rounded-full min-h-32 w-32 border-4 border-[#2bee2b]/20 flex items-center justify-center overflow-hidden bg-slate-100"
-                                     style={user.profilePic || picPreview ? { backgroundImage: `url(${picPreview || user.profilePic})` } : {}}
+                                    style={user.profilePic || picPreview ? { backgroundImage: `url(${picPreview || user.profilePic})` } : {}}
                                 >
                                     {!(user.profilePic || picPreview) && (
                                         <span className="text-4xl font-black text-slate-400">{user.name.charAt(0).toUpperCase()}</span>
@@ -654,13 +653,14 @@ const ProfileMobile: React.FC<ProfileMobileProps> = ({ user, setUser, onLogout }
                 </div>
             </div>
 
+
             {/* Account Info Section */}
             <div className="px-4 py-2">
                 <h3 className="text-slate-900 text-sm font-bold uppercase tracking-widest px-2 pb-4">Account Information</h3>
                 <div className="space-y-3">
-                    
+
                     {/* Phone Display Panel */}
-                    <div 
+                    <div
                         onClick={() => openEdit('phone')}
                         className="flex items-center gap-4 bg-slate-50 p-4 rounded-xl border border-slate-100 cursor-pointer active:scale-95 transition-transform"
                     >
@@ -678,7 +678,7 @@ const ProfileMobile: React.FC<ProfileMobileProps> = ({ user, setUser, onLogout }
                     </div>
 
                     {/* Address Display Panel */}
-                    <div 
+                    <div
                         onClick={() => openEdit('address')}
                         className="flex items-center gap-4 bg-slate-50 p-4 rounded-xl border border-slate-100 cursor-pointer active:scale-95 transition-transform"
                     >
@@ -694,6 +694,86 @@ const ProfileMobile: React.FC<ProfileMobileProps> = ({ user, setUser, onLogout }
                 </div>
             </div>
 
+            {/* Management Section */}
+            {(() => {
+                const userAuths = (allAuthorities || []).filter(a => a.userId === user.id && a.isActive);
+                const roles = userAuths.map(a => a.role);
+                const isAdmin = user.role === 'admin' || roles.includes('admin') || user.email === 'pradhanparthasarthi3@gmail.com';
+                const isSales = user.role === 'sales' || roles.includes('sales') || isAdmin;
+                const isDelivery = user.role === 'delivery' || roles.includes('delivery') || isAdmin;
+                const isLogistic = user.role === 'logistic' || roles.includes('logistic') || isAdmin;
+
+                if (!(isAdmin || isSales || isDelivery || isLogistic)) return null;
+
+                return (
+                    <div className="px-4 py-2">
+                        <h3 className="text-slate-900 text-sm font-bold uppercase tracking-widest px-2 pb-4">Management</h3>
+                        <div className="space-y-3">
+                            {isAdmin && (
+                                <button
+                                    onClick={() => window.location.href = '/admin'}
+                                    className="flex w-full items-center gap-4 bg-slate-50 p-4 rounded-xl border border-slate-100 cursor-pointer active:scale-95 transition-transform"
+                                >
+                                    <div className="text-blue-600 flex items-center justify-center rounded-lg bg-blue-50 shrink-0 size-10">
+                                        <span className="material-symbols-outlined">shield_person</span>
+                                    </div>
+                                    <div className="flex flex-col flex-1 text-left">
+                                        <p className="text-slate-900 text-base font-semibold">Admin Panel</p>
+                                        <p className="text-slate-500 text-xs font-medium">System controls and oversight</p>
+                                    </div>
+                                    <span className="material-symbols-outlined text-slate-400">arrow_forward</span>
+                                </button>
+                            )}
+                            {isSales && (
+                                <button
+                                    onClick={() => navigate('/sales')}
+                                    className="flex w-full items-center gap-4 bg-slate-50 p-4 rounded-xl border border-slate-100 cursor-pointer active:scale-95 transition-transform"
+                                >
+                                    <div className="text-amber-600 flex items-center justify-center rounded-lg bg-amber-50 shrink-0 size-10">
+                                        <span className="material-symbols-outlined">business_center</span>
+                                    </div>
+                                    <div className="flex flex-col flex-1 text-left">
+                                        <p className="text-slate-900 text-base font-semibold">Sales Dashboard</p>
+                                        <p className="text-slate-500 text-xs font-medium">Track targets and activities</p>
+                                    </div>
+                                    <span className="material-symbols-outlined text-slate-400">arrow_forward</span>
+                                </button>
+                            )}
+                            {isDelivery && (
+                                <button
+                                    onClick={() => navigate('/delivery')}
+                                    className="flex w-full items-center gap-4 bg-slate-50 p-4 rounded-xl border border-slate-100 cursor-pointer active:scale-95 transition-transform"
+                                >
+                                    <div className="text-green-600 flex items-center justify-center rounded-lg bg-green-50 shrink-0 size-10">
+                                        <span className="material-symbols-outlined">local_shipping</span>
+                                    </div>
+                                    <div className="flex flex-col flex-1 text-left">
+                                        <p className="text-slate-900 text-base font-semibold">Delivery Dashboard</p>
+                                        <p className="text-slate-500 text-xs font-medium">Manage missions and routes</p>
+                                    </div>
+                                    <span className="material-symbols-outlined text-slate-400">arrow_forward</span>
+                                </button>
+                            )}
+                            {isLogistic && (
+                                <button
+                                    onClick={() => window.location.href = '/admin/Logistic'}
+                                    className="flex w-full items-center gap-4 bg-slate-50 p-4 rounded-xl border border-slate-100 cursor-pointer active:scale-95 transition-transform"
+                                >
+                                    <div className="text-emerald-600 flex items-center justify-center rounded-lg bg-emerald-50 shrink-0 size-10">
+                                        <span className="material-symbols-outlined">dashboard</span>
+                                    </div>
+                                    <div className="flex flex-col flex-1 text-left">
+                                        <p className="text-slate-900 text-base font-semibold">Logistic Dashboard</p>
+                                        <p className="text-slate-500 text-xs font-medium">Warehouse and supply chain</p>
+                                    </div>
+                                    <span className="material-symbols-outlined text-slate-400">arrow_forward</span>
+                                </button>
+                            )}
+                        </div>
+                    </div>
+                );
+            })()}
+
             {/* Actions Section */}
             {!editField && (
                 <div className="px-4 py-6 space-y-3 pb-24">
@@ -705,7 +785,7 @@ const ProfileMobile: React.FC<ProfileMobileProps> = ({ user, setUser, onLogout }
                         <span className="material-symbols-outlined text-slate-400 group-hover:translate-x-1 transition-transform">arrow_forward</span>
                     </button>
 
-                    <button 
+                    <button
                         onClick={onLogout}
                         className="flex w-full items-center gap-4 bg-white p-4 rounded-xl border border-slate-200 hover:bg-red-50 transition-colors group active:scale-[0.98]"
                     >
@@ -746,8 +826,6 @@ export async function cropToSquare(file: File): Promise<Blob> {
         const url = URL.createObjectURL(file);
         img.onload = async () => {
             try {
-                // @ts-ignore
-                const faceapi = window.faceapi;
                 const SIZE = 400;
                 const canvas = document.createElement('canvas');
                 canvas.width = SIZE;
@@ -756,33 +834,11 @@ export async function cropToSquare(file: File): Promise<Blob> {
 
                 let sourceX = 0, sourceY = 0, sourceWidth = img.width, sourceHeight = img.height;
 
-                if (faceapi) {
-                    const detections = await faceapi.detectSingleFace(img, new faceapi.TinyFaceDetectorOptions());
-                    if (detections) {
-                        const { x, y, width, height } = detections.box;
-                        const faceCenterX = x + width / 2;
-                        const faceCenterY = y + height / 2;
-                        const cropSize = Math.max(width, height) * 2.5;
-                        const finalCropSize = Math.min(cropSize, img.width, img.height);
-
-                        sourceX = Math.max(0, Math.min(faceCenterX - finalCropSize / 2, img.width - finalCropSize));
-                        sourceY = Math.max(0, Math.min(faceCenterY - finalCropSize / 2, img.height - finalCropSize));
-                        sourceWidth = finalCropSize;
-                        sourceHeight = finalCropSize;
-                    } else {
-                        const minSide = Math.min(img.width, img.height);
-                        sourceX = (img.width - minSide) / 2;
-                        sourceY = (img.height - minSide) / 2;
-                        sourceWidth = minSide;
-                        sourceHeight = minSide;
-                    }
-                } else {
-                    const minSide = Math.min(img.width, img.height);
-                    sourceX = (img.width - minSide) / 2;
-                    sourceY = (img.height - minSide) / 2;
-                    sourceWidth = minSide;
-                    sourceHeight = minSide;
-                }
+                const minSide = Math.min(img.width, img.height);
+                sourceX = (img.width - minSide) / 2;
+                sourceY = (img.height - minSide) / 2;
+                sourceWidth = minSide;
+                sourceHeight = minSide;
 
                 ctx.drawImage(img, sourceX, sourceY, sourceWidth, sourceHeight, 0, 0, SIZE, SIZE);
                 URL.revokeObjectURL(url);

@@ -45,7 +45,7 @@ export type User = {
   password?: string;
   address: string; // Keep for legacy/simplified access
   addresses?: UserAddress[];
-  role: 'customer' | 'sales' | 'admin' | 'delivery';
+  role: 'customer' | 'sales' | 'admin' | 'delivery' | 'logistic';
   referredBy?: string; // ID of the referring user
   phoneVerified: boolean;
   isActive: boolean;
@@ -83,11 +83,12 @@ export type Order = {
   total: number;
   deliveryDate: string;
   status: 'pending' | 'confirmed' | 'assigned' | 'out_for_delivery' | 'delivered' | 'attempted' | 'returned' | 'cancelled';
-  paymentMethod: 'COD';
+  paymentMethod: 'COD' | 'Online';
   createdAt: string;
   deliveryPersonId?: string; // ID of the assigned delivery person
   deliveryOTP?: string; // 4-digit OTP for delivery confirmation
   notes?: string; // Additional notes (e.g., return reason, attempted status flag)
+  subscriptionId?: string; // Link to the originating subscription if any
   returnConfirmed?: boolean; // Admin has officially received and acknowledged the return
 };
 
@@ -97,7 +98,7 @@ export type AuthState = {
 };
 
 export type Permission = {
-  resource: 'orders' | 'products' | 'users' | 'authority' | 'stats';
+  resource: 'orders' | 'products' | 'users' | 'authority' | 'stats' | 'logistic';
   action: 'read' | 'write' | 'delete' | 'all';
 };
 
@@ -105,7 +106,7 @@ export type Authority = {
   id: string;
   userId: string;
   userName: string;
-  role: 'admin' | 'sales' | 'delivery';
+  role: 'admin' | 'sales' | 'delivery' | 'logistic';
   permissions: Permission[];
   isActive: boolean;
   lastActive?: string;

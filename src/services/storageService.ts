@@ -306,6 +306,67 @@ export const storageService = {
         return data?.url || '';
     },
 
+    // --- AVATAR PRESETS ---
+    getAvatarPresets: async (): Promise<{ id: string; url: string; isActive: boolean }[]> => {
+        const { data, error } = await insforge.database
+            .from('avatar_presets')
+            .select('*')
+            .eq('is_active', true)
+            .order('created_at', { ascending: false });
+
+        if (error) {
+            logError('getAvatarPresets', error);
+            return [];
+        }
+
+        return (data || []).map((p: any) => ({
+            id: p.id,
+            url: p.url,
+            isActive: p.is_active
+        }));
+    },
+
+    uploadAvatarPreset: async (file: File): Promise<string> => {
+        const fileName = `preset-${Date.now()}-${file.name.replace(/[^a-zA-Z0-9.-]/g, '')}`;
+
+        // @ts-ignore
+        const { data, error } = await insforge.storage
+            .from('avatar-presets')
+            .upload(fileName, file);
+
+        if (error) {
+            logError('uploadAvatarPreset (storage)', error);
+            throw error;
+        }
+
+        const url = data?.url || '';
+
+        const { error: dbError } = await insforge.database
+            .from('avatar_presets')
+            .insert([{ url, is_active: true }]);
+
+        if (dbError) {
+            logError('uploadAvatarPreset (db)', dbError);
+            throw new Error(`Database error: ${dbError.message || 'Unknown database error'}`);
+        }
+
+        return url;
+    },
+
+    deleteAvatarPreset: async (id: string, url: string): Promise<void> => {
+        // Extract key from URL if possible, or just delete from DB if key management is complex
+        // For simplicity with the current SDK, we'll deactivate it in DB
+        const { error } = await insforge.database
+            .from('avatar_presets')
+            .update({ is_active: false })
+            .eq('id', id);
+
+        if (error) {
+            logError('deleteAvatarPreset', error);
+            throw error;
+        }
+    },
+
     deleteProfilePicture: async (url: string): Promise<void> => {
         // No-op for safety
     },
@@ -519,12 +580,17 @@ export const storageService = {
 
     // --- ORDERS ---
     getAllOrders: async (): Promise<Order[]> => {
+        console.log('[StorageService] getAllOrders: Fetching all orders from database...');
         const { data, error } = await insforge.database
             .from('orders')
             .select('*')
             .order('created_at', { ascending: false });
 
-        if (error) return [];
+        if (error) {
+            console.error('[StorageService] getAllOrders Error:', error);
+            return [];
+        }
+        console.log('[StorageService] getAllOrders: Got', data?.length || 0, 'orders');
         return (data || []).map((o: any) => ({
             id: o.id,
             userId: o.user_id,

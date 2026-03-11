@@ -48,6 +48,7 @@ const AuthPage: React.FC = () => {
     const [isProcessingImg, setIsProcessingImg] = useState(false);
     const [isReferralOpen, setIsReferralOpen] = useState(false);
     const [isManualLoginOpen, setIsManualLoginOpen] = useState(false);
+    const [avatarPresets, setAvatarPresets] = useState<{ id: string; url: string }[]>([]);
     const referralRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
@@ -57,6 +58,30 @@ const AuthPage: React.FC = () => {
             }
         };
         document.addEventListener('mousedown', handleClickOutside);
+
+        const oauthError = localStorage.getItem('auth_error');
+        const oauthModeSwitch = localStorage.getItem('auth_mode_switch');
+        
+        if (oauthError) {
+            setAuthError(oauthError);
+            localStorage.removeItem('auth_error');
+        }
+        
+        if (oauthModeSwitch === 'REGISTER') {
+            setAuthMode('REGISTER');
+            localStorage.removeItem('auth_mode_switch');
+        }
+
+        const fetchPresets = async () => {
+            try {
+                const presets = await storageService.getAvatarPresets();
+                setAvatarPresets(presets);
+            } catch (err) {
+                console.error("Failed to fetch presets:", err);
+            }
+        };
+        fetchPresets();
+
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
 
@@ -70,8 +95,6 @@ const AuthPage: React.FC = () => {
             const img = new Image();
             img.onload = async () => {
                 try {
-                    // @ts-ignore
-                    const faceapi = window.faceapi;
                     const canvas = document.createElement('canvas');
                     const SIZE = 512;
                     canvas.width = SIZE;
@@ -81,26 +104,11 @@ const AuthPage: React.FC = () => {
 
                     let sourceX = 0, sourceY = 0, sourceWidth = img.width, sourceHeight = img.height;
 
-                    if (faceapi) {
-                        const detections = await faceapi.detectSingleFace(img, new faceapi.TinyFaceDetectorOptions());
-                        if (detections) {
-                            const { x, y, width, height } = detections.box;
-                            const faceCenterX = x + width / 2;
-                            const faceCenterY = y + height / 2;
-                            const cropSize = Math.max(width, height) * 2.5;
-                            const finalCropSize = Math.min(cropSize, img.width, img.height);
-                            sourceX = Math.max(0, Math.min(faceCenterX - finalCropSize / 2, img.width - finalCropSize));
-                            sourceY = Math.max(0, Math.min(faceCenterY - finalCropSize / 2, img.height - finalCropSize));
-                            sourceWidth = finalCropSize;
-                            sourceHeight = finalCropSize;
-                        } else {
-                            const minSide = Math.min(img.width, img.height);
-                            sourceX = (img.width - minSide) / 2;
-                            sourceY = (img.height - minSide) / 2;
-                            sourceWidth = minSide;
-                            sourceHeight = minSide;
-                        }
-                    }
+                    const minSide = Math.min(img.width, img.height);
+                    sourceX = (img.width - minSide) / 2;
+                    sourceY = (img.height - minSide) / 2;
+                    sourceWidth = minSide;
+                    sourceHeight = minSide;
 
                     ctx.drawImage(img, sourceX, sourceY, sourceWidth, sourceHeight, 0, 0, SIZE, SIZE);
                     setRegProfilePic(canvas.toDataURL('image/jpeg', 0.8));
@@ -298,8 +306,12 @@ const AuthPage: React.FC = () => {
 
                 <Card className="p-0 overflow-hidden border-none shadow-[0_40px_80px_-15px_rgba(0,0,0,0.08)] bg-white rounded-[2.5rem] animate-scale-in">
                     {authError && (
-                        <div className="mx-8 mt-8 p-4 bg-red-50 text-red-600 text-xs font-bold rounded-2xl border border-red-100 animate-shake flex items-center gap-3">
-                            <XCircle className="w-4 h-4 shrink-0" />
+                        <div className={`mx-8 mt-8 p-4 text-xs font-bold rounded-2xl border flex items-center gap-3 transition-all ${
+                            authError.includes('Welcome!') 
+                            ? 'bg-blue-50 text-blue-600 border-blue-100 animate-fade-in-up shadow-sm' 
+                            : 'bg-red-50 text-red-600 border-red-100 animate-shake'
+                        }`}>
+                            {authError.includes('Welcome!') ? <Sparkles className="w-4 h-4 shrink-0" /> : <XCircle className="w-4 h-4 shrink-0" />}
                             {authError}
                         </div>
                     )}
@@ -372,7 +384,7 @@ const AuthPage: React.FC = () => {
                             <div className="space-y-8 animate-fade-in-up">
                                 {authStep !== 'ADDRESS_ONLY' && (
                                     <div className="flex flex-col items-center">
-                                        <div className="relative">
+                                        <div className="relative mb-6">
                                             <div className="w-28 h-28 rounded-full overflow-hidden border-4 border-white bg-slate-50 shadow-xl flex items-center justify-center relative ring-1 ring-slate-100">
                                                 {regProfilePic ? (
                                                     <img src={regProfilePic} className="w-full h-full object-cover" alt="Profile" />
@@ -396,6 +408,25 @@ const AuthPage: React.FC = () => {
                                                 </div>
                                             )}
                                         </div>
+
+                                        {/* Avatar Picker Section */}
+                                        {avatarPresets.length > 0 && (
+                                            <div className="w-full space-y-3">
+                                                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 text-center">Choose an Avatar</p>
+                                                <div className="flex items-center gap-4 overflow-x-auto pb-4 px-4 -mx-10 custom-scrollbar scroll-smooth no-scrollbar">
+                                                    {avatarPresets.map((preset) => (
+                                                        <button
+                                                            key={preset.id}
+                                                            type="button"
+                                                            onClick={() => setRegProfilePic(preset.url)}
+                                                            className={`shrink-0 w-16 h-16 rounded-2xl overflow-hidden border-2 transition-all active:scale-95 ${regProfilePic === preset.url ? 'border-green-600 shadow-lg scale-110' : 'border-slate-100 shadow-sm opacity-60 hover:opacity-100'}`}
+                                                        >
+                                                            <img src={preset.url} className="w-full h-full object-cover" alt="Preset" />
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )}
                                     </div>
                                 )}
 
@@ -446,19 +477,31 @@ const AuthPage: React.FC = () => {
                                     </div>
 
                                     {authStep !== 'ADDRESS_ONLY' && (
-                                        <div className="relative" ref={referralRef}>
-                                            <div onClick={() => setIsReferralOpen(!isReferralOpen)} className="p-4 rounded-2xl border-2 border-slate-50 bg-slate-50/50 flex items-center justify-between cursor-pointer">
-                                                <div className="flex items-center gap-3">
-                                                    <Sparkles className="w-4 h-4 text-slate-300" />
-                                                    <span className="text-xs font-bold text-slate-400">{regReferralCode || 'Referral Code (Optional)'}</span>
-                                                </div>
-                                                <ChevronRight className="w-4 h-4 text-slate-300" />
-                                            </div>
-                                            {isReferralOpen && (
-                                                <div className="absolute top-full left-0 right-0 mt-3 bg-white rounded-2xl shadow-xl border border-slate-100 z-50 py-2">
-                                                    {allAuthorities.filter(a => a.role === 'sales' && a.isActive).map(a => (
-                                                        <div key={a.id} onClick={() => { setRegReferralCode(a.referralCode!); setIsReferralOpen(false); }} className="px-5 py-3 hover:bg-slate-50 cursor-pointer text-xs font-bold">
-                                                            {a.referralCode} ({a.userName})
+                                        <div className="relative group" ref={referralRef}>
+                                            <Sparkles className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-300 group-focus-within:text-green-600 transition-colors" />
+                                            <input 
+                                                type="text" 
+                                                className="w-full pl-11 pr-10 py-4 rounded-2xl border-2 border-slate-50 bg-slate-50/50 focus:border-green-600 focus:bg-white focus:shadow-lg focus:shadow-green-900/5 outline-none text-sm font-bold text-slate-900 transition-all placeholder:text-slate-400" 
+                                                placeholder="Referral Code (Optional)" 
+                                                value={regReferralCode} 
+                                                onChange={(e) => setRegReferralCode(e.target.value.toUpperCase())}
+                                                onFocus={() => setIsReferralOpen(true)}
+                                            />
+                                            <button 
+                                                type="button" 
+                                                className="absolute right-4 top-1/2 -translate-y-1/2 p-2 -mr-2"
+                                                onClick={() => setIsReferralOpen(!isReferralOpen)}
+                                            >
+                                                <ChevronRight className={`w-4 h-4 text-slate-300 transition-transform ${isReferralOpen ? 'rotate-90' : ''}`} />
+                                            </button>
+                                            
+                                            {isReferralOpen && allAuthorities.filter(a => a.role === 'sales' && a.isActive && (a.referralCode || '').toUpperCase().includes(regReferralCode)).length > 0 && (
+                                                <div className="absolute top-full left-0 right-0 mt-3 bg-white rounded-2xl shadow-xl border border-slate-100 z-50 py-2 max-h-48 overflow-y-auto">
+                                                    {allAuthorities
+                                                        .filter(a => a.role === 'sales' && a.isActive && (a.referralCode || '').toUpperCase().includes(regReferralCode))
+                                                        .map(a => (
+                                                        <div key={a.id} onClick={() => { setRegReferralCode(a.referralCode!); setIsReferralOpen(false); }} className="px-5 py-3 hover:bg-slate-50 cursor-pointer text-xs font-bold text-slate-700">
+                                                            {a.referralCode} - <span className="text-slate-400 font-medium">{a.userName}</span>
                                                         </div>
                                                     ))}
                                                 </div>

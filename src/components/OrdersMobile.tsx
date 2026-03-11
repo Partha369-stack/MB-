@@ -13,14 +13,14 @@ interface OrdersMobileProps {
     onNavigate?: (view: string) => void;
 }
 
-const STATUS_ICONS: Record<string, { label: string, icon: string, colorClass: string, isDone?: boolean }> = {
+const STATUS_ICONS: Record<string, { label: string, icon: string, colorClass: string, isDone?: boolean, isNegative?: boolean }> = {
     pending: { label: 'Processing', icon: 'cycle', colorClass: 'text-[#2bee2b]' },
     confirmed: { label: 'Confirmed', icon: 'check_circle', colorClass: 'text-[#2bee2b]' },
     assigned: { label: 'Assigned', icon: 'person', colorClass: 'text-[#2bee2b]' },
     out_for_delivery: { label: 'Out for Delivery', icon: 'local_shipping', colorClass: 'text-[#2bee2b]' },
-    delivered: { label: 'Delivered', icon: 'check_circle', colorClass: 'text-[#2bee2b]', isDone: true },
-    cancelled: { label: 'Cancelled', icon: 'cancel', colorClass: 'text-red-500', isDone: true },
-    returned: { label: 'Returned', icon: 'keyboard_return', colorClass: 'text-slate-500', isDone: true }
+    delivered: { label: 'Delivered', icon: 'task_alt', colorClass: 'text-[#2bee2b]', isDone: true },
+    cancelled: { label: 'Order Cancelled', icon: 'block', colorClass: 'text-rose-600', isDone: true, isNegative: true },
+    returned: { label: 'Order Returned', icon: 'assignment_return', colorClass: 'text-amber-600', isDone: true, isNegative: true }
 };
 
 const getStatusMeta = (s: string) => STATUS_ICONS[s] || { label: s, icon: 'info', colorClass: 'text-slate-500' };
@@ -69,13 +69,13 @@ const OrdersMobile: React.FC<OrdersMobileProps> = ({
             <div key={order.id} className="flex flex-col gap-3 py-4 border-b border-[#2bee2b]/10 hover:bg-[#2bee2b]/5 transition-colors px-2 rounded-xl">
                 <div className="flex justify-between items-start">
                     <div className="flex flex-col">
-                        <span className={`text-xs font-bold uppercase tracking-wider mb-1 flex items-center gap-1 ${statusMeta.colorClass}`}>
-                            <span className="material-symbols-outlined text-[14px]">
+                        <span className={`text-[10px] font-black uppercase tracking-[0.15em] mb-1.5 flex items-center gap-1.5 px-2.5 py-1 rounded-full w-fit ${statusMeta.isNegative ? 'bg-rose-50' : 'bg-[#2bee2b]/10'} ${statusMeta.colorClass}`}>
+                            <span className="material-symbols-outlined text-[14px]" style={{ fontVariationSettings: "'FILL' 1" }}>
                                 {statusMeta.icon}
                             </span>
                             {statusMeta.label}
                         </span>
-                        <h3 className="text-base font-bold text-slate-900">
+                        <h3 className="text-base font-bold text-slate-900 ml-1">
                             Order #{order.id.toUpperCase()}
                         </h3>
                     </div>
@@ -230,9 +230,13 @@ const OrdersMobile: React.FC<OrdersMobileProps> = ({
 
                     <div className="space-y-10 relative pl-4 border-l-2 border-[#2bee2b]/20 ml-2">
                         {steps.map((step, i) => {
-                            const isDone = i <= currentIdx;
+                            const isDone = i <= currentIdx || (statusMeta.isNegative && i < 4);
                             const isCurrent = i === currentIdx;
                             const meta = getStatusMeta(step);
+                            
+                            // If order is cancelled/returned, hide the path to "Delivered" if it's not reached
+                            if (statusMeta.isNegative && i === 4) return null;
+
                             return (
                                 <div key={step} className="flex gap-6 relative">
                                     <div className={`absolute -left-[27px] w-5 h-5 rounded-full border-4 border-[#f6f8f6] ${isDone ? 'bg-[#2bee2b] shadow-lg shadow-[#2bee2b]/40' : 'bg-slate-300'}`} />
@@ -243,6 +247,18 @@ const OrdersMobile: React.FC<OrdersMobileProps> = ({
                                 </div>
                             );
                         })}
+                        
+                        {statusMeta.isNegative && (
+                            <div className="flex gap-6 relative">
+                                <div className={`absolute -left-[27px] w-5 h-5 rounded-full border-4 border-[#f6f8f6] bg-rose-500 shadow-lg shadow-rose-200`} />
+                                <div className="opacity-100">
+                                    <h4 className="text-sm font-bold tracking-wide text-rose-600">{statusMeta.label}</h4>
+                                    <p className="text-xs text-rose-400 font-medium mt-1">
+                                        {order.status === 'returned' ? 'Package returned to warehouse' : 'This order was cancelled'}
+                                    </p>
+                                </div>
+                            </div>
+                        )}
                     </div>
 
 
