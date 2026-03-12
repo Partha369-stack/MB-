@@ -4,7 +4,7 @@ import { useAppContext } from '../contexts/AppContext';
 import { PRODUCTS, STARTER_PACK } from '../constants';
 
 const ProductHub: React.FC = () => {
-    const { view, setView, user, cart, setCart, orderHistory } = useAppContext();
+    const { view, setView, user, cart, setCart, orderHistory, activeSubscription } = useAppContext();
     const navigate = useNavigate();
 
     const total = cart.reduce((acc, item) => acc + (item.product.price * item.quantity), 0);
@@ -81,13 +81,23 @@ const ProductHub: React.FC = () => {
                                 </p>
                             </div>
                             
-                            <button 
-                                onClick={() => setView('CHOOSE_PLAN_ITEMS')}
-                                className="w-full bg-[#2bee2b] text-slate-900 font-extrabold py-3.5 rounded-2xl shadow-lg shadow-[#2bee2b]/20 flex items-center justify-center gap-2 active:scale-95 transition-all text-sm"
-                            >
-                                <span className="material-symbols-outlined text-lg">rocket_launch</span>
-                                Join Now
-                            </button>
+                            {activeSubscription ? (
+                                <button 
+                                    onClick={() => setView('MANAGE_SUBSCRIPTION')}
+                                    className="w-full bg-slate-900 text-white font-extrabold py-3.5 rounded-2xl shadow-lg shadow-slate-900/10 flex items-center justify-center gap-2 active:scale-95 transition-all text-sm"
+                                >
+                                    <span className="material-symbols-outlined text-lg">settings</span>
+                                    Manage Subscription
+                                </button>
+                            ) : (
+                                <button 
+                                    onClick={() => setView('CHOOSE_PLAN_ITEMS')}
+                                    className="w-full bg-[#2bee2b] text-slate-900 font-extrabold py-3.5 rounded-2xl shadow-lg shadow-[#2bee2b]/20 flex items-center justify-center gap-2 active:scale-95 transition-all text-sm"
+                                >
+                                    <span className="material-symbols-outlined text-lg">rocket_launch</span>
+                                    Join Now
+                                </button>
+                            )}
                         </div>
                     </div>
                 </div>

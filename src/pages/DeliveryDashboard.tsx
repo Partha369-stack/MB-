@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
     Truck, CheckCircle2, Phone,
     Clock, LogOut, ChevronRight,
@@ -31,6 +31,9 @@ const DeliveryDashboard: React.FC<DeliveryDashboardProps> = ({ user, onLogout, o
     const [isToggling, setIsToggling] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
 
+    // Guard: prevent realtime-triggered fetchData from overwriting optimistic updates mid-save
+    const isSavingRef = useRef(false);
+
     // Data State
     const [orders, setOrders] = useState<Order[]>([]);
     const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
@@ -59,6 +62,11 @@ const DeliveryDashboard: React.FC<DeliveryDashboardProps> = ({ user, onLogout, o
     }, [user.isAvailable]);
 
     const fetchData = async () => {
+        // Block fetch if a save is currently in-flight (avoid overwriting optimistic state with stale DB data)
+        if (isSavingRef.current) {
+            console.log('[DeliveryDashboard] fetchData skipped — save in progress');
+            return;
+        }
         try {
             const [usersData, ordersData, subsData, statsData] = await Promise.all([
                 storageService.getUsers(),
@@ -101,7 +109,7 @@ const DeliveryDashboard: React.FC<DeliveryDashboardProps> = ({ user, onLogout, o
 
     useEffect(() => {
         fetchData();
-        const tables = ['orders', 'subscriptions', 'profiles', 'cod_settlements'];
+        const tables = ['orders', 'subscription_orders', 'subscriptions', 'profiles', 'cod_settlements'];
         const cleanupPromises = tables.map(table =>
             storageService.subscribeToRealtimeTable(table, () => { fetchData(); })
         );
@@ -136,11 +144,17 @@ const DeliveryDashboard: React.FC<DeliveryDashboardProps> = ({ user, onLogout, o
     const handleUpdateOrderStatus = async (orderId: string, newStatus: Order['status']) => {
         const order = orders.find(o => o.id === orderId);
         if (!order) return;
+
+        // Lock fetchData during save so realtime doesn't pull stale DB state and bounce back
+        isSavingRef.current = true;
         try {
             const updatedOrder = { ...order, status: newStatus, deliveryPersonId: user.id };
+            // 1. Optimistic UI update first
             setOrders(prev => prev.map(o => o.id === orderId ? updatedOrder : o));
-            storageService.publishOrderStatusUpdate(orderId, newStatus, order.userId).catch(() => { });
+            // 2. Persist to DB
             await storageService.saveOrder(updatedOrder);
+            // 3. Only AFTER save succeeds — broadcast realtime (so other clients update from real DB data)
+            storageService.publishOrderStatusUpdate(orderId, newStatus, order.userId).catch(() => { });
 
             if (newStatus === 'delivered' && (order.paymentMethod === 'COD' || !order.paymentMethod)) {
                 try {
@@ -162,12 +176,20 @@ const DeliveryDashboard: React.FC<DeliveryDashboardProps> = ({ user, onLogout, o
 
             if (['delivered', 'returned'].includes(newStatus)) {
                 setExpandedOrderId(null);
-                fetchData();
             }
         } catch (err) {
             console.error("Status Update Failed:", err);
+            // On failure: revert optimistic update by re-fetching real state
+            isSavingRef.current = false;
             fetchData();
+            return;
+        } finally {
+            // Always release the lock after save attempt completes
+            isSavingRef.current = false;
         }
+
+        // After lock is released, do a final sync to confirm DB state matches UI
+        fetchData();
     };
 
     const handleVerifyOTP = async (orderId: string) => {
@@ -223,10 +245,11 @@ const DeliveryDashboard: React.FC<DeliveryDashboardProps> = ({ user, onLogout, o
 
     const cleanSearch = searchQuery.toLowerCase().replace(/^#?mb/, '');
 
+    // FIX: activeMissions = ONLY orders that need action from delivery person (confirmed or out_for_delivery)
+    // Return-pending orders are separated — they are awaiting ADMIN confirmation, not delivery action
     const activeMissions = orders.filter(o => {
         const customer = allUsers.find(u => u.id === o.userId);
-        const isReturnPending = ['returned', 'attempted', 'cancelled'].includes(o.status) && !o.returnConfirmed;
-        const matchesStatus = ['confirmed', 'out_for_delivery'].includes(o.status) || isReturnPending;
+        const matchesStatus = ['confirmed', 'out_for_delivery'].includes(o.status);
         const matchesSearch = !cleanSearch ||
             o.id.toLowerCase().includes(cleanSearch) ||
             (customer?.name?.toLowerCase().includes(cleanSearch)) ||
@@ -234,8 +257,15 @@ const DeliveryDashboard: React.FC<DeliveryDashboardProps> = ({ user, onLogout, o
         return matchesStatus && matchesSearch;
     });
 
+    // FIX: Return-pending orders = returned/attempted/cancelled but not yet admin-confirmed
+    // These are shown separately so delivery person knows they are pending warehouse receipt
+    const returnPendingOrders = orders.filter(o =>
+        ['returned', 'attempted', 'cancelled'].includes(o.status) && !o.returnConfirmed
+    );
+
     const missionHistory = orders.filter(o => {
         const customer = allUsers.find(u => u.id === o.userId);
+        // FIX: History = delivered orders OR return-COMPLETED orders (admin confirmed return)
         const isReturnComplete = ['returned', 'attempted', 'cancelled'].includes(o.status) && o.returnConfirmed;
         const matchesStatus = o.status === 'delivered' || isReturnComplete;
         const matchesSearch = !cleanSearch ||
@@ -244,7 +274,7 @@ const DeliveryDashboard: React.FC<DeliveryDashboardProps> = ({ user, onLogout, o
         return matchesStatus && matchesSearch;
     });
 
-    // Active delivery = first out_for_delivery, else first confirmed
+    // FIX: activeDelivery only picks from truly active missions (confirmed or out_for_delivery)
     const activeDelivery = activeMissions.find(o => o.status === 'out_for_delivery') || activeMissions.find(o => o.status === 'confirmed') || null;
     const activeCustomer = activeDelivery ? allUsers.find(u => u.id === activeDelivery.userId) : null;
 
@@ -327,14 +357,23 @@ const DeliveryDashboard: React.FC<DeliveryDashboardProps> = ({ user, onLogout, o
 
                             {activeDelivery && activeCustomer ? (
                                 <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 space-y-4">
-                                    {/* Order ID + Status Badge */}
-                                    <div className="flex items-center justify-between">
+                                    {/* Order ID + Status Badge + Order Type */}
+                                    <div className="flex items-center justify-between gap-2">
                                         <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
                                             Order #{activeDelivery.id.toUpperCase()}
                                         </span>
-                                        <span className={`text-[9px] font-black px-2.5 py-1 rounded-full uppercase tracking-wide ${activeDelivery.status === 'out_for_delivery' ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>
-                                            {activeDelivery.status === 'out_for_delivery' ? 'Out for Delivery' : 'Pick up Ready'}
-                                        </span>
+                                        <div className="flex items-center gap-1.5">
+                                            {(activeDelivery.orderType === 'Subscription' || !!activeDelivery.subscriptionId) && (
+                                                <span className="text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-wide bg-purple-100 text-purple-700">
+                                                    Subscription
+                                                </span>
+                                            )}
+                                            <span className={`text-[9px] font-black px-2.5 py-1 rounded-full uppercase tracking-wide ${
+                                                activeDelivery.status === 'out_for_delivery' ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'
+                                            }`}>
+                                                {activeDelivery.status === 'out_for_delivery' ? 'Out for Delivery' : 'Pick up Ready'}
+                                            </span>
+                                        </div>
                                     </div>
 
                                     {/* Customer Name */}
@@ -364,7 +403,7 @@ const DeliveryDashboard: React.FC<DeliveryDashboardProps> = ({ user, onLogout, o
                                         </div>
                                     </div>
 
-                                    {/* OTP Section (only when out_for_delivery) */}
+                                    {/* OTP Section — shown for ALL orders (regular & subscription) when out_for_delivery */}
                                     {activeDelivery.status === 'out_for_delivery' && expandedOrderId === activeDelivery.id && (
                                         <div className="bg-green-50 rounded-xl p-4 border border-green-100 space-y-3">
                                             <div className="flex items-center gap-2">
@@ -470,20 +509,59 @@ const DeliveryDashboard: React.FC<DeliveryDashboardProps> = ({ user, onLogout, o
                                 <div className="space-y-3">
                                     {nextTasks.slice(0, 5).map(order => {
                                         const customer = allUsers.find(u => u.id === order.userId);
+                                        const isSub = order.orderType === 'Subscription' || !!order.subscriptionId;
                                         return (
                                             <div key={order.id} className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 flex items-center gap-4">
-                                                <div className="w-10 h-10 rounded-xl bg-green-50 border border-green-100 overflow-hidden flex items-center justify-center flex-shrink-0">
+                                                <div className={`w-10 h-10 rounded-xl overflow-hidden flex items-center justify-center flex-shrink-0 ${isSub ? 'bg-purple-50 border border-purple-100' : 'bg-green-50 border border-green-100'}`}>
                                                     {customer?.profilePic
                                                         ? <img src={customer.profilePic} className="w-full h-full object-cover" alt="" />
-                                                        : <Package className="w-5 h-5 text-green-400" />
+                                                        : <Package className={`w-5 h-5 ${isSub ? 'text-purple-400' : 'text-green-400'}`} />
                                                     }
                                                 </div>
                                                 <div className="flex-1 min-w-0">
-                                                    <p className="text-xs font-black text-slate-900 truncate">{customer?.name || 'Customer'}</p>
+                                                    <div className="flex items-center gap-1.5">
+                                                        <p className="text-xs font-black text-slate-900 truncate">{customer?.name || 'Customer'}</p>
+                                                        {isSub && <span className="text-[8px] font-black px-1.5 py-0.5 rounded-full bg-purple-100 text-purple-700 uppercase shrink-0">Sub</span>}
+                                                    </div>
                                                     <p className="text-[10px] font-semibold text-slate-400 mt-0.5 truncate">{customer?.address || 'No Address'}</p>
                                                 </div>
                                                 <span className="text-[10px] font-black text-slate-400 tracking-wide shrink-0">
                                                     #{order.id.toUpperCase().slice(-6)}
+                                                </span>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* FIX: Return-pending orders — separate from active missions */}
+                        {returnPendingOrders.length > 0 && (
+                            <div>
+                                <div className="flex items-center gap-2 mb-3">
+                                    <div className="w-5 h-5 rounded-md bg-rose-100 flex items-center justify-center">
+                                        <RotateCcw className="w-3 h-3 text-rose-500" />
+                                    </div>
+                                    <h2 className="text-sm font-black text-slate-800">Pending Returns</h2>
+                                    <span className="ml-auto text-[9px] font-black text-rose-400 bg-rose-50 px-2 py-0.5 rounded-full uppercase">
+                                        Awaiting Admin
+                                    </span>
+                                </div>
+                                <div className="space-y-2">
+                                    {returnPendingOrders.map(order => {
+                                        const customer = allUsers.find(u => u.id === order.userId);
+                                        const statusLabel = order.status === 'cancelled' ? 'Cancelled' : order.status === 'attempted' ? 'Attempted' : 'Returned';
+                                        return (
+                                            <div key={order.id} className="bg-white rounded-2xl border border-rose-100 shadow-sm p-4 flex items-center gap-4">
+                                                <div className="w-10 h-10 rounded-xl bg-rose-50 flex items-center justify-center flex-shrink-0">
+                                                    <RotateCcw className="w-5 h-5 text-rose-400" />
+                                                </div>
+                                                <div className="flex-1 min-w-0">
+                                                    <p className="text-xs font-black text-slate-900 truncate">{customer?.name || 'Customer'}</p>
+                                                    <p className="text-[10px] font-semibold text-slate-400 mt-0.5 truncate">{order.notes || 'No reason provided'}</p>
+                                                </div>
+                                                <span className="text-[9px] font-black text-rose-500 bg-rose-50 px-2 py-1 rounded-full uppercase shrink-0">
+                                                    {statusLabel}
                                                 </span>
                                             </div>
                                         );
@@ -541,7 +619,12 @@ const DeliveryDashboard: React.FC<DeliveryDashboardProps> = ({ user, onLogout, o
                                 return (
                                     <div key={order.id} className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 flex items-center justify-between gap-4">
                                         <div className="flex items-center gap-3">
-                                            <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${order.status === 'delivered' ? 'bg-green-50 text-green-500' : 'bg-rose-50 text-rose-500'}`}>
+                                            {/* FIX: Correct icon + color per actual status */}
+                                            <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
+                                                order.status === 'delivered' ? 'bg-green-50 text-green-500' :
+                                                order.status === 'cancelled' ? 'bg-slate-100 text-slate-400' :
+                                                'bg-rose-50 text-rose-500'
+                                            }`}>
                                                 {order.status === 'delivered' ? <Check className="w-5 h-5" /> : <RotateCcw className="w-5 h-5" />}
                                             </div>
                                             <div>
@@ -551,8 +634,13 @@ const DeliveryDashboard: React.FC<DeliveryDashboardProps> = ({ user, onLogout, o
                                         </div>
                                         <div className="text-right shrink-0">
                                             <p className="text-xs font-black text-slate-900">₹{order.total}</p>
-                                            <p className={`text-[9px] font-black uppercase mt-1 ${order.status === 'delivered' ? 'text-green-500' : 'text-rose-500'}`}>
-                                                {order.status === 'delivered' ? 'Delivered' : 'Returned'}
+                                            {/* FIX: Correct label + color per actual status */}
+                                            <p className={`text-[9px] font-black uppercase mt-1 ${
+                                                order.status === 'delivered' ? 'text-green-500' :
+                                                order.status === 'cancelled' ? 'text-slate-400' :
+                                                'text-rose-500'
+                                            }`}>
+                                                {order.status === 'delivered' ? 'Delivered' : order.status === 'cancelled' ? 'Cancelled' : order.status === 'attempted' ? 'Attempted' : 'Returned'}
                                             </p>
                                         </div>
                                     </div>
@@ -702,7 +790,8 @@ const QueueModal: React.FC<{
                     <div>
                         <h3 className="text-xl font-black text-slate-900 leading-tight">Task Queue</h3>
                         <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">
-                            {missions.length} active assignments
+                            {/* FIX: Count only true active missions (confirmed + out_for_delivery), not return-pending */}
+                            {missions.filter(m => ['confirmed', 'out_for_delivery'].includes(m.status)).length} active assignments
                         </p>
                     </div>
                     <button 

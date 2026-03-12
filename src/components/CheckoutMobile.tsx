@@ -9,6 +9,7 @@ interface CheckoutMobileProps {
     onChangeAddress: () => void;
     onBack?: () => void;
     isPlacingOrder?: boolean;
+    isRazorpayAvailable?: boolean;
 }
 
 const CheckoutMobile: React.FC<CheckoutMobileProps> = ({
@@ -18,7 +19,8 @@ const CheckoutMobile: React.FC<CheckoutMobileProps> = ({
     onPlaceOrder,
     onChangeAddress,
     onBack,
-    isPlacingOrder = false
+    isPlacingOrder = false,
+    isRazorpayAvailable = true
 }) => {
     const total = cart.reduce((acc, item) => acc + (item.product.price * item.quantity), 0);
     const [paymentMethod, setPaymentMethod] = React.useState<'COD' | 'ONLINE'>('COD');
@@ -122,16 +124,32 @@ const CheckoutMobile: React.FC<CheckoutMobileProps> = ({
                                 </div>
                             </label>
 
-                            <label className={`flex items-center p-3 rounded-lg border-2 cursor-pointer transition-colors ${paymentMethod === 'ONLINE' ? 'border-[#2bee2b] bg-[#2bee2b]/5' : 'border-slate-100'}`}>
+                            <label 
+                                className={`flex items-center p-3 rounded-lg border-2 transition-colors ${
+                                    !isRazorpayAvailable ? 'opacity-50 grayscale cursor-not-allowed border-slate-100' : 
+                                    paymentMethod === 'ONLINE' ? 'border-[#2bee2b] bg-[#2bee2b]/5' : 'border-slate-100'
+                                }`}
+                                onClick={(e) => {
+                                    if (!isRazorpayAvailable) {
+                                        e.preventDefault();
+                                        return;
+                                    }
+                                    setPaymentMethod('ONLINE');
+                                }}
+                            >
                                 <input 
                                     type="radio" 
                                     name="payment" 
+                                    disabled={!isRazorpayAvailable}
                                     className="w-5 h-5 text-[#2bee2b] border-[#2bee2b] focus:ring-[#2bee2b]" 
                                     checked={paymentMethod === 'ONLINE'}
-                                    onChange={() => setPaymentMethod('ONLINE')}
+                                    readOnly
                                 />
                                 <div className="ml-3">
                                     <p className="font-bold text-slate-900">Online Payment</p>
+                                    {!isRazorpayAvailable && (
+                                        <p className="text-[10px] text-orange-500 font-bold uppercase tracking-tight">Temporarily Unavailable</p>
+                                    )}
                                 </div>
                             </label>
                         </div>
@@ -141,7 +159,9 @@ const CheckoutMobile: React.FC<CheckoutMobileProps> = ({
                             <p className="text-sm text-slate-700 leading-relaxed">
                                 {paymentMethod === 'COD' 
                                     ? "Payment will be collected at your doorstep. Please ensure someone is available to receive the order."
-                                    : "Pay securely via UPI, Cards or Net Banking. Your order will be processed immediately after payment."}
+                                    : !isRazorpayAvailable 
+                                        ? "Online Payments are now unavailable. Please try COD payment!"
+                                        : "Pay securely via UPI, Cards or Net Banking. Your order will be processed immediately after payment."}
                             </p>
                         </div>
                     </div>

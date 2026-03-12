@@ -8,13 +8,23 @@ const OrderSuccessPage: React.FC = () => {
     const navigate = useNavigate();
 
     const handleBack = () => {
-        setView('PRODUCT_HUB');
+        if (lastCreatedOrder?.subscriptionId || lastCreatedOrder?.orderType === 'Subscription') {
+            setView('MANAGE_SUBSCRIPTION');
+        } else {
+            setView('PRODUCT_HUB');
+        }
     };
 
     return (
         <OrderSuccessMobile
             order={lastCreatedOrder}
-            onContinue={() => setView('PRODUCT_HUB')}
+            onContinue={() => {
+                if (lastCreatedOrder?.subscriptionId || lastCreatedOrder?.orderType === 'Subscription') {
+                    setView('MANAGE_SUBSCRIPTION');
+                } else {
+                    setView('PRODUCT_HUB');
+                }
+            }}
             onBack={handleBack}
         />
     );

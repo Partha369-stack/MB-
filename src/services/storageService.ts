@@ -19,6 +19,12 @@ const generateOrderId = () => {
     return `MB${digits}`;
 };
 
+const generateSubscriptionOrderId = () => {
+    // Generate MBS + 6 digit unique numeric code
+    const digits = Math.floor(100000 + Math.random() * 900000).toString();
+    return `MBS${digits}`;
+};
+
 // Internal status mapping to bypass DB constraints
 const toDbStatus = (status: Order['status']): string => {
     // These statuses are now all supported in the DB through the updated constraint
@@ -106,7 +112,7 @@ export const storageService = {
             role: user.role,
             is_available: user.isAvailable,
             email: user.email,
-            assigned_delivery_person_id: user.assignedDeliveryPersonId
+            assigned_delivery_person_id: user.assignedDeliveryPersonId || null
         };
 
         // Safety check for UUID
@@ -580,18 +586,13 @@ export const storageService = {
 
     // --- ORDERS ---
     getAllOrders: async (): Promise<Order[]> => {
-        console.log('[StorageService] getAllOrders: Fetching all orders from database...');
-        const { data, error } = await insforge.database
-            .from('orders')
-            .select('*')
-            .order('created_at', { ascending: false });
+        console.log('[StorageService] getAllOrders: Fetching from both tables...');
+        const [regularRes, subRes] = await Promise.all([
+            insforge.database.from('orders').select('*').order('created_at', { ascending: false }),
+            insforge.database.from('subscription_orders').select('*').order('created_at', { ascending: false })
+        ]);
 
-        if (error) {
-            console.error('[StorageService] getAllOrders Error:', error);
-            return [];
-        }
-        console.log('[StorageService] getAllOrders: Got', data?.length || 0, 'orders');
-        return (data || []).map((o: any) => ({
+        const mapOrder = (o: any): Order => ({
             id: o.id,
             userId: o.user_id,
             items: o.items,
@@ -599,22 +600,31 @@ export const storageService = {
             deliveryDate: o.delivery_date,
             status: fromDbStatus(o),
             paymentMethod: o.payment_method,
+            orderType: o.order_type as Order['orderType'],
             createdAt: o.created_at,
             deliveryPersonId: o.delivery_person_id,
             deliveryOTP: o.delivery_otp,
-            returnConfirmed: o.return_confirmed
-        }));
+            subscriptionId: o.subscription_id,
+            paymentStatus: o.payment_status,
+            returnConfirmed: o.return_confirmed,
+            notes: o.admin_notes
+        });
+
+        const regularOrders = (regularRes.data || []).map(mapOrder);
+        const subOrders = (subRes.data || []).map(mapOrder);
+
+        return [...regularOrders, ...subOrders].sort((a, b) => 
+            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+        );
     },
 
     getOrders: async (uid: string): Promise<Order[]> => {
-        const { data, error } = await insforge.database
-            .from('orders')
-            .select('*')
-            .eq('user_id', uid)
-            .order('created_at', { ascending: false });
+        const [regularRes, subRes] = await Promise.all([
+            insforge.database.from('orders').select('*').eq('user_id', uid).order('created_at', { ascending: false }),
+            insforge.database.from('subscription_orders').select('*').eq('user_id', uid).order('created_at', { ascending: false })
+        ]);
 
-        if (error) return [];
-        return (data || []).map((o: any) => ({
+        const mapOrder = (o: any): Order => ({
             id: o.id,
             userId: o.user_id,
             items: o.items,
@@ -622,32 +632,47 @@ export const storageService = {
             deliveryDate: o.delivery_date,
             status: fromDbStatus(o),
             paymentMethod: o.payment_method,
+            orderType: o.order_type as Order['orderType'],
             createdAt: o.created_at,
             deliveryPersonId: o.delivery_person_id,
             deliveryOTP: o.delivery_otp,
-            returnConfirmed: o.return_confirmed
-        }));
+            subscriptionId: o.subscription_id,
+            paymentStatus: o.payment_status,
+            returnConfirmed: o.return_confirmed,
+            notes: o.admin_notes
+        });
+
+        const regularOrders = (regularRes.data || []).map(mapOrder);
+        const subOrders = (subRes.data || []).map(mapOrder);
+
+        return [...regularOrders, ...subOrders].sort((a, b) => 
+            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+        );
     },
 
     saveOrder: async (orderData: Order | Omit<Order, 'id' | 'createdAt' | 'deliveryOTP'>): Promise<Order> => {
+        const isSubscription = orderData.subscriptionId || (orderData as any).id?.startsWith('MBS') || orderData.orderType === 'Subscription';
+        const table = isSubscription ? 'subscription_orders' : 'orders';
+
         const dbOrder: any = {
             user_id: orderData.userId,
             items: orderData.items,
             total: orderData.total,
             status: toDbStatus(orderData.status),
             payment_method: orderData.paymentMethod || 'COD',
+            order_type: orderData.orderType || (orderData.subscriptionId ? 'Subscription' : 'Regular'),
             delivery_date: orderData.status === 'out_for_delivery'
                 ? (orderData.deliveryDate || new Date().toISOString())
                 : ((orderData.deliveryDate === 'Scheduled' || !orderData.deliveryDate) ? null : orderData.deliveryDate),
-            delivery_person_id: orderData.deliveryPersonId,
+            delivery_person_id: orderData.deliveryPersonId || null,
             delivery_otp: (orderData as any).deliveryOTP || Math.floor(1000 + Math.random() * 9000).toString(),
             admin_notes: (orderData as any).notes || null,
+            subscription_id: orderData.subscriptionId || null,
+            payment_status: orderData.paymentStatus || 'pending',
             return_confirmed: (orderData as Order).returnConfirmed || false
         };
 
-        // Only include created_at and generated ID for new orders
         if (!(orderData as Order).id) {
-            // Check if user is active before allowing new order
             const { data: profile } = await insforge.database
                 .from('profiles')
                 .select('is_active')
@@ -658,59 +683,44 @@ export const storageService = {
                 throw new Error("Cannot place order: User account is blocked.");
             }
 
-            dbOrder.id = generateOrderId();
+            if (dbOrder.subscription_id || dbOrder.order_type === 'Subscription') {
+                dbOrder.id = generateSubscriptionOrderId();
+            } else {
+                dbOrder.id = generateOrderId();
+            }
             dbOrder.created_at = (orderData as any).createdAt || new Date().toISOString();
-        }
-
-        if ((orderData as Order).id) {
-            const { data, error } = await insforge.database
-                .from('orders')
-                .update(dbOrder)
-                .eq('id', (orderData as Order).id)
-                .select()
-                .single();
-
-            if (error) {
-                logError('saveOrder (update)', error);
-                throw error;
-            }
-            return {
-                id: data.id,
-                userId: data.user_id,
-                items: data.items,
-                total: data.total,
-                status: fromDbStatus(data),
-                paymentMethod: data.payment_method,
-                deliveryDate: data.delivery_date,
-                createdAt: data.created_at,
-                deliveryPersonId: data.delivery_person_id,
-                deliveryOTP: data.delivery_otp,
-                returnConfirmed: data.return_confirmed
-            };
         } else {
-            const { data, error } = await insforge.database
-                .from('orders')
-                .insert([dbOrder])
-                .select()
-                .single();
-            if (error) {
-                console.error("Order insertion failed:", error);
-                throw error;
-            }
-            return {
-                id: data.id,
-                userId: data.user_id,
-                items: data.items,
-                total: data.total,
-                status: fromDbStatus(data),
-                paymentMethod: data.payment_method,
-                deliveryDate: data.delivery_date,
-                createdAt: data.created_at,
-                deliveryPersonId: data.delivery_person_id,
-                deliveryOTP: data.delivery_otp,
-                returnConfirmed: data.return_confirmed
-            };
+            dbOrder.id = (orderData as Order).id;
         }
+
+        const { data, error } = await insforge.database
+            .from(table)
+            .upsert(dbOrder)
+            .select()
+            .single();
+
+        if (error) {
+            logError(`saveOrder (${table})`, error);
+            throw error;
+        }
+
+        return {
+            id: data.id,
+            userId: data.user_id,
+            items: data.items,
+            total: data.total,
+            status: fromDbStatus(data),
+            paymentMethod: data.payment_method,
+            orderType: data.order_type as Order['orderType'],
+            deliveryDate: data.delivery_date,
+            createdAt: data.created_at,
+            deliveryPersonId: data.delivery_person_id,
+            deliveryOTP: data.delivery_otp,
+            subscriptionId: data.subscription_id,
+            paymentStatus: data.payment_status,
+            returnConfirmed: data.return_confirmed,
+            notes: data.admin_notes
+        };
     },
 
     // --- SUBSCRIPTIONS ---
@@ -756,7 +766,7 @@ export const storageService = {
             created_at: (subData as Subscription).createdAt || new Date().toISOString()
         };
 
-        const { data, error } = await insforge.database.from('subscriptions').insert([dbSub]).select().single();
+        const { data, error } = await insforge.database.from('subscriptions').upsert(dbSub).select().single();
         if (error) throw error;
 
         return {
@@ -1288,5 +1298,74 @@ export const storageService = {
 
     disconnectRealtime: () => {
         try { insforge.realtime.disconnect(); } catch (_) { }
-    }
+    },
+
+    // --- APP SETTINGS (Razorpay & general config) ---
+    getAppSettings: async (): Promise<{
+        razorpayKeyId: string;
+        razorpayKeySecret: string;
+        razorpayWebhookSecret: string;
+    }> => {
+        const { data, error } = await insforge.database
+            .from('app_settings')
+            .select('razorpay_key_id, razorpay_key_secret, razorpay_webhook_secret')
+            .eq('id', 'singleton')
+            .single();
+
+        if (error || !data) {
+            return { razorpayKeyId: '', razorpayKeySecret: '', razorpayWebhookSecret: '' };
+        }
+        return {
+            razorpayKeyId: data.razorpay_key_id || '',
+            razorpayKeySecret: data.razorpay_key_secret || '',
+            razorpayWebhookSecret: data.razorpay_webhook_secret || '',
+        };
+    },
+
+    saveAppSettings: async (settings: {
+        razorpayKeyId?: string;
+        razorpayKeySecret?: string;
+        razorpayWebhookSecret?: string;
+    }): Promise<void> => {
+        const updates: any = {
+            id: 'singleton',
+            updated_at: new Date().toISOString()
+        };
+        if (settings.razorpayKeyId !== undefined) updates.razorpay_key_id = settings.razorpayKeyId;
+        if (settings.razorpayKeySecret !== undefined) updates.razorpay_key_secret = settings.razorpayKeySecret;
+        if (settings.razorpayWebhookSecret !== undefined) updates.razorpay_webhook_secret = settings.razorpayWebhookSecret;
+
+        // Use upsert to ensure it works even if row doesn't exist
+        const { error } = await insforge.database
+            .from('app_settings')
+            .upsert(updates);
+
+        if (error) {
+            logError('saveAppSettings', error);
+            throw error;
+        }
+    },
+
+    // Returns just the public Key ID for frontend JS (safe to expose via API response)
+    getRazorpayKeyId: async (): Promise<string> => {
+        const { data } = await insforge.database
+            .from('app_settings')
+            .select('razorpay_key_id')
+            .eq('id', 'singleton')
+            .single();
+        return data?.razorpay_key_id || '';
+    },
+
+    updateOrder: async (orderId: string, updates: any): Promise<void> => {
+        const table = orderId.startsWith('MBS') ? 'subscription_orders' : 'orders';
+        const { error } = await insforge.database
+            .from(table)
+            .update(updates)
+            .eq('id', orderId);
+
+        if (error) {
+            logError(`updateOrder (${table})`, error);
+            throw error;
+        }
+    },
 };

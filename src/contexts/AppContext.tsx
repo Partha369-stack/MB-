@@ -3,7 +3,7 @@ import { User, CartItem, Order, Subscription, Authority, Frequency } from '../ty
 import { authService } from '../services/authService';
 import { storageService } from '../services/storageService';
 
-type View = 'LANDING' | 'AUTH' | 'PRODUCT_HUB' | 'ONE_TIME_ORDER' | 'CHECKOUT' | 'AUTO_DELIVERY_FLOW' | 'MANAGE_SUBSCRIPTION' | 'ORDER_SUCCESS' | 'ORDER_HISTORY' | 'PROFILE' | 'CHOOSE_PLAN_ITEMS' | 'PAYMENT_METHOD';
+type View = 'LANDING' | 'AUTH' | 'PRODUCT_HUB' | 'ONE_TIME_ORDER' | 'CHECKOUT' | 'AUTO_DELIVERY_FLOW' | 'MANAGE_SUBSCRIPTION' | 'ORDER_SUCCESS' | 'ORDER_HISTORY' | 'PROFILE' | 'CHOOSE_PLAN_ITEMS' | 'PAYMENT_METHOD' | 'TERMS' | 'PRIVACY';
 
 interface AppContextType {
     view: View;

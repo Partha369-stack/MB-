@@ -84,6 +84,8 @@ export type Order = {
   deliveryDate: string;
   status: 'pending' | 'confirmed' | 'assigned' | 'out_for_delivery' | 'delivered' | 'attempted' | 'returned' | 'cancelled';
   paymentMethod: 'COD' | 'Online';
+  paymentStatus?: 'pending' | 'paid' | 'failed' | 'refunded';
+  orderType?: 'Regular' | 'Subscription';
   createdAt: string;
   deliveryPersonId?: string; // ID of the assigned delivery person
   deliveryOTP?: string; // 4-digit OTP for delivery confirmation

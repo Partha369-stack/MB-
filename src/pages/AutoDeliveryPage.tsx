@@ -4,14 +4,26 @@ import { useAppContext } from '../contexts/AppContext';
 import { storageService } from '../services/storageService';
 import { Frequency, Subscription } from '../types';
 import { authService } from '../services/authService';
-import { ArrowLeft, ChevronLeft, ChevronRight, Check, Truck } from 'lucide-react';
+import { ArrowLeft, ChevronLeft, ChevronRight, Check, Truck, Edit2, MapPin, Phone } from 'lucide-react';
 
 const AutoDeliveryPage: React.FC = () => {
     const { user, setUser, setView, refreshUserData, planDraft, setPlanDraft, planDeliveryDate, setPlanDeliveryDate } = useAppContext();
     const navigate = useNavigate();
     
-    // Delivery State
+    // UI States
     const [currentMonth, setCurrentMonth] = useState(new Date(2023, 9, 1)); // Oct 2023 as per design
+    const [isEditingAddress, setIsEditingAddress] = useState(false);
+    const [tempPhone, setTempPhone] = useState(user?.phone || '');
+    const [tempAddress, setTempAddress] = useState(user?.address || '');
+    const [isSaving, setIsSaving] = useState(false);
+
+    // Sync state with user data 
+    React.useEffect(() => {
+        if (user) {
+            setTempPhone(user.phone || '');
+            setTempAddress(user.address || '');
+        }
+    }, [user]);
 
     const handleLogout = async () => {
         await authService.logout();
@@ -22,6 +34,26 @@ const AutoDeliveryPage: React.FC = () => {
 
     const handleBack = () => {
         setView('CHOOSE_PLAN_ITEMS');
+    };
+
+    const handleSaveDetails = async () => {
+        if (!user || isSaving) return;
+        setIsSaving(true);
+        try {
+            const updatedUser = {
+                ...user,
+                phone: tempPhone,
+                address: tempAddress
+            };
+            await storageService.saveUserProfile(updatedUser);
+            setUser(updatedUser);
+            setIsEditingAddress(false);
+        } catch (error) {
+            console.error("Failed to save profile:", error);
+            alert("Failed to save details. Please try again.");
+        } finally {
+            setIsSaving(false);
+        }
     };
 
     const handlePrevMonth = () => {
@@ -131,6 +163,83 @@ const AutoDeliveryPage: React.FC = () => {
                                 </div>
                             ))}
                         </div>
+                    </div>
+                </section>
+
+                {/* Delivery Details Section */}
+                <section>
+                    <div className="mb-4 flex items-center justify-between">
+                        <div>
+                            <h3 className="text-xl font-bold text-slate-900 tracking-tight">Delivery Details</h3>
+                            <p className="text-slate-400 text-xs font-semibold">Where should we deliver your plan?</p>
+                        </div>
+                        <button 
+                            onClick={() => setIsEditingAddress(!isEditingAddress)}
+                            className="bg-white p-2 rounded-xl shadow-sm border border-slate-100 text-[#22C55E] active:scale-95 transition-all"
+                        >
+                            {isEditingAddress ? <Check className="w-5 h-5" /> : <Edit2 className="w-5 h-5" />}
+                        </button>
+                    </div>
+
+                    <div className="bg-white rounded-[2rem] p-6 shadow-sm border border-slate-50 space-y-4">
+                        {isEditingAddress ? (
+                            <div className="space-y-4">
+                                <div>
+                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block ml-1">Phone Number</label>
+                                    <div className="relative">
+                                        <Phone className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                                        <input 
+                                            type="tel"
+                                            value={tempPhone}
+                                            onChange={(e) => setTempPhone(e.target.value)}
+                                            className="w-full bg-slate-50 border-none rounded-2xl py-4 pl-12 pr-4 text-sm font-bold text-slate-900 focus:ring-2 focus:ring-[#22C55E]/20 transition-all placeholder:text-slate-300"
+                                            placeholder="Enter phone number"
+                                        />
+                                    </div>
+                                </div>
+                                <div>
+                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block ml-1">Delivery Address</label>
+                                    <div className="relative">
+                                        <MapPin className="absolute left-4 top-4 w-4 h-4 text-slate-400" />
+                                        <textarea 
+                                            value={tempAddress}
+                                            onChange={(e) => setTempAddress(e.target.value)}
+                                            rows={3}
+                                            className="w-full bg-slate-50 border-none rounded-2xl py-4 pl-12 pr-4 text-sm font-bold text-slate-900 focus:ring-2 focus:ring-[#22C55E]/20 transition-all placeholder:text-slate-300 resize-none"
+                                            placeholder="Enter full address"
+                                        />
+                                    </div>
+                                </div>
+                                <button 
+                                    onClick={handleSaveDetails}
+                                    disabled={isSaving}
+                                    className="w-full bg-slate-900 text-white font-black py-4 rounded-2xl shadow-lg active:scale-95 transition-all text-xs uppercase tracking-widest disabled:opacity-50"
+                                >
+                                    {isSaving ? 'Saving...' : 'Save Details'}
+                                </button>
+                            </div>
+                        ) : (
+                            <div className="space-y-4">
+                                <div className="flex items-center gap-4">
+                                    <div className="w-10 h-10 rounded-xl bg-green-50 flex items-center justify-center text-[#22C55E]">
+                                        <Phone className="w-4 h-4" />
+                                    </div>
+                                    <div>
+                                        <p className="text-[10px] font-black text-slate-300 uppercase tracking-widest">Phone</p>
+                                        <p className="text-sm font-bold text-slate-900">{user?.phone || 'Not set'}</p>
+                                    </div>
+                                </div>
+                                <div className="flex items-start gap-4 pt-2 border-t border-slate-50">
+                                    <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center text-blue-500 mt-1">
+                                        <MapPin className="w-4 h-4" />
+                                    </div>
+                                    <div>
+                                        <p className="text-[10px] font-black text-slate-300 uppercase tracking-widest">Address</p>
+                                        <p className="text-sm font-bold text-slate-900 leading-relaxed">{user?.address || 'Not set'}</p>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
                     </div>
                 </section>
 

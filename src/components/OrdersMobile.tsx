@@ -60,6 +60,35 @@ const OrdersMobile: React.FC<OrdersMobileProps> = ({
     const activeOrdersList = orders.filter(o => !['delivered', 'cancelled', 'returned'].includes(o.status));
     const pastOrdersList = orders.filter(o => ['delivered', 'cancelled', 'returned'].includes(o.status)).sort((a,b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
+    // Auto-generate OTP for today's subscription orders if missing
+    useEffect(() => {
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        const day = String(now.getDate()).padStart(2, '0');
+        const today = `${year}-${month}-${day}`;
+        
+        const needsOTP = orders.filter(o => 
+            (o.orderType === 'Subscription' || !!o.subscriptionId) && 
+            o.deliveryDate && 
+            o.deliveryDate.includes(today) && 
+            !o.deliveryOTP && 
+            !['delivered', 'cancelled', 'returned'].includes(o.status)
+        );
+
+        if (needsOTP.length > 0) {
+            needsOTP.forEach(async (order) => {
+                try {
+                    // Update order - storageService.saveOrder will generate OTP if missing
+                    const updated = await storageService.saveOrder({ ...order });
+                    setOrders(prev => prev.map(o => o.id === updated.id ? updated : o));
+                } catch (err) {
+                    console.error("Auto-OTP generation failed:", err);
+                }
+            });
+        }
+    }, [orders]);
+
     const renderOrderItem = (order: Order) => {
         const statusMeta = getStatusMeta(order.status);
         const itemNames = order.items.map(i => i.product.name).join(', ');
@@ -69,13 +98,21 @@ const OrdersMobile: React.FC<OrdersMobileProps> = ({
             <div key={order.id} className="flex flex-col gap-3 py-4 border-b border-[#2bee2b]/10 hover:bg-[#2bee2b]/5 transition-colors px-2 rounded-xl">
                 <div className="flex justify-between items-start">
                     <div className="flex flex-col">
-                        <span className={`text-[10px] font-black uppercase tracking-[0.15em] mb-1.5 flex items-center gap-1.5 px-2.5 py-1 rounded-full w-fit ${statusMeta.isNegative ? 'bg-rose-50' : 'bg-[#2bee2b]/10'} ${statusMeta.colorClass}`}>
-                            <span className="material-symbols-outlined text-[14px]" style={{ fontVariationSettings: "'FILL' 1" }}>
-                                {statusMeta.icon}
+                        <div className="flex items-center gap-2 mb-1.5">
+                            <span className={`text-[10px] font-black uppercase tracking-[0.15em] flex items-center gap-1.5 px-2.5 py-1 rounded-full w-fit ${statusMeta.isNegative ? 'bg-rose-50' : 'bg-[#2bee2b]/10'} ${statusMeta.colorClass}`}>
+                                <span className="material-symbols-outlined text-[14px]" style={{ fontVariationSettings: "'FILL' 1" }}>
+                                    {statusMeta.icon}
+                                </span>
+                                {statusMeta.label}
                             </span>
-                            {statusMeta.label}
-                        </span>
-                        <h3 className="text-base font-bold text-slate-900 ml-1">
+                            {(order.orderType === 'Subscription' || !!order.subscriptionId) && (
+                                <span className="text-[10px] font-black uppercase tracking-[0.15em] flex items-center gap-1.5 px-2.5 py-1 rounded-full w-fit bg-purple-100 text-purple-700">
+                                    <span className="material-symbols-outlined text-[14px]">autorenew</span>
+                                    Subscription
+                                </span>
+                            )}
+                        </div>
+                        <h3 className={`text-base font-bold ml-1 ${order.orderType === 'Subscription' || !!order.subscriptionId ? 'text-purple-900' : 'text-slate-900'}`}>
                             Order #{order.id.toUpperCase()}
                         </h3>
                     </div>
@@ -264,6 +301,17 @@ const OrdersMobile: React.FC<OrdersMobileProps> = ({
 
 
                     <div className="mt-16 bg-white p-6 rounded-3xl border border-[#2bee2b]/10 shadow-sm">
+                        {order.deliveryOTP && !statusMeta.isDone && (
+                             <div className="mb-6 pb-6 border-b border-slate-100 flex items-center justify-between">
+                                 <div>
+                                     <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Delivery OTP</p>
+                                     <p className="text-2xl font-black text-[#2bee2b] tracking-[0.2em]">{order.deliveryOTP}</p>
+                                 </div>
+                                 <div className="w-12 h-12 bg-[#2bee2b]/10 rounded-2xl flex items-center justify-center text-[#2bee2b]">
+                                     <span className="material-symbols-outlined text-2xl">shield_locked</span>
+                                 </div>
+                             </div>
+                        )}
                         <h3 className="text-xs font-bold uppercase tracking-widest text-slate-400 mb-6 border-b border-slate-100 pb-2">Package Breakdown</h3>
                         <div className="space-y-4 mb-8">
                             {order.items.map((item, i) => (

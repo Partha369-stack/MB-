@@ -18,6 +18,8 @@ import LogisticDashboard from './pages/LogisticDashboard';
 import ProfileMobile from './components/ProfileMobile';
 import ChoosePlanItems from './pages/ChoosePlanItems';
 import PaymentMethodPage from './pages/PaymentMethodPage';
+import TermsPage from './pages/TermsPage';
+import PrivacyPage from './pages/PrivacyPage';
 
 // Services
 import { authService } from './services/authService';
@@ -103,6 +105,8 @@ const AppRoutes: React.FC = () => {
             {view === 'PROFILE' && <ProfileMobile user={user} setUser={setUser} onLogout={handleLogout} />}
             {view === 'CHOOSE_PLAN_ITEMS' && <ChoosePlanItems />}
             {view === 'PAYMENT_METHOD' && <PaymentMethodPage />}
+            {view === 'TERMS' && <TermsPage />}
+            {view === 'PRIVACY' && <PrivacyPage />}
             {view === 'LANDING' && <Navigate to="/" replace />}
           </main>
         ) : <Navigate to="/" />

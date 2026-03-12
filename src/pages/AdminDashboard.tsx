@@ -5,7 +5,6 @@ import {
     ShoppingBag,
     Settings,
     LogOut,
-    BarChart3,
     Search,
     CheckCircle2,
     Clock,
@@ -14,43 +13,64 @@ import {
     ChevronRight,
     TrendingUp,
     ArrowUpRight,
+    ArrowDownRight,
+    Activity,
+    Calendar,
+    MapPin,
     Filter,
+    History,
+    Trash2,
+    Edit3,
+    PlusCircle,
+    RotateCcw,
+    Wallet,
+    UserCircle,
+    Key,
+    Eye,
+    ShoppingCart,
+    Truck,
+    Copy,
+    Menu,
+    Grid,
+    Shield,
+    Database,
+    LayoutPanelLeft,
+    ListFilter,
+    UserPlus,
+    FileText,
+    Download,
+    Upload,
+    MoreHorizontal,
+    RefreshCw,
+    IndianRupee,
+    Box,
+    Star,
+    MessageSquare,
+    Bell,
+    BarChart2,
+    BarChart3,
+    Briefcase,
+    Zap,
+    Heart,
+    Hash,
+    Mail,
+    Phone,
+    Info,
     ChevronDown,
     Sparkles,
-    UserPlus,
-    Key,
-    UserCircle,
-    Info,
-    Shield,
     Plus,
     Target,
-    MapPin,
-    Phone,
-    History,
-    Wallet,
-    IndianRupee,
-    Truck,
     AlertCircle,
     Edit2,
-    Trash2,
     AlertTriangle,
-    RefreshCw,
-    Mail,
-    Calendar,
     ArrowRight,
-    Box,
     LayoutGrid,
     Navigation,
-    Activity,
-    Zap,
     Check,
-    RotateCcw,
-    Copy,
     User as UserIcon,
     Moon,
     Sun,
-    ShieldCheck,
-    Eye
+    ShieldCheck
 } from 'lucide-react';
 
 import {
@@ -64,6 +84,7 @@ import { locationService } from '../services/locationService';
 import { Order, Product, User, Subscription, Authority, SalesTarget, SalesActivity, CODSettlement, Permission } from '../types';
 import { notifyOrderStatusChange, notifyDeliveryAssigned, notificationService } from '../services/notificationService';
 import AnalyticsDashboard from '../components/AnalyticsDashboard';
+import AdminSettingsPage from '../components/AdminSettingsPage';
 
 
 interface AdminDashboardProps {
@@ -83,7 +104,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, isStand
     const [endDate, setEndDate] = useState(new Date().toISOString().split('T')[0]);
 
 
-    const [orderTab, setOrderTab] = useState<'standard' | 'subscriptions'>('standard');
+    const [orderTab, setOrderTab] = useState<'standard' | 'active_plans' | 'subscription_orders'>('standard');
     const [orders, setOrders] = useState<Order[]>([]);
     const [allUsers, setAllUsers] = useState<User[]>([]);
     const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
@@ -784,13 +805,13 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, isStand
                             </div>
                         </div>
                         <div className="space-y-3">
-                            {orders.slice(0, 5).map((order) => (
+                            {orders.filter(o => !(o.orderType === 'Subscription' || !!o.subscriptionId || o.id.startsWith('MBS'))).slice(0, 5).map((order) => (
                                 <div
                                     key={order.id}
                                     className="flex items-center justify-between p-3 rounded-xl bg-white border border-slate-100 shadow-sm hover:border-green-100 transition-all group"
                                 >
                                     <div className="min-w-0">
-                                        <p className="font-black text-slate-900 text-[10px] truncate group-hover:text-green-700 transition-colors uppercase tracking-wider">{order.id.toUpperCase()}</p>
+                                        <p className={`font-black text-[10px] truncate transition-colors uppercase tracking-wider ${order.orderType === 'Subscription' || order.subscriptionId ? 'text-purple-700 group-hover:text-purple-800' : 'text-slate-900 group-hover:text-green-700'}`}>{order.id.toUpperCase()}</p>
                                         <p className="text-[9px] text-slate-400 font-bold">₹{order.total} • {new Date(order.createdAt).toLocaleDateString()}</p>
                                     </div>
                                     <div className="shrink-0">
@@ -825,16 +846,25 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, isStand
                         : 'text-slate-500 hover:bg-slate-50'
                         }`}
                 >
-                    Standard Orders
+                    Order Management
                 </button>
                 <button
-                    onClick={() => setOrderTab('subscriptions')}
-                    className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${orderTab === 'subscriptions'
+                    onClick={() => setOrderTab('active_plans')}
+                    className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${orderTab === 'active_plans'
                         ? 'bg-purple-600 text-white shadow-sm'
                         : 'text-slate-500 hover:bg-slate-50'
                         }`}
                 >
-                    Recurring Subscriptions
+                    Active Plans
+                </button>
+                <button
+                    onClick={() => setOrderTab('subscription_orders')}
+                    className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${orderTab === 'subscription_orders'
+                        ? 'bg-indigo-600 text-white shadow-sm'
+                        : 'text-slate-500 hover:bg-slate-50'
+                        }`}
+                >
+                    Subscription Orders
                 </button>
             </div>
 
@@ -987,8 +1017,17 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, isStand
                                             return (
                                                 <tr key={order.id} className="hover:bg-slate-50 transition-colors">
                                                     <td className="px-6 py-4 whitespace-nowrap">
-                                                        <div className="mb-2"><button onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(order.id.toUpperCase()); }} className="group flex flex-shrink-0 items-center justify-center gap-1.5 px-2 py-1 rounded bg-slate-900 hover:bg-slate-800 text-[8px] font-black text-white uppercase tracking-[0.2em] shadow-sm transition-all active:scale-95 focus:ring-2 focus:ring-slate-400" title="Copy Mission ID">{order.id.toUpperCase()} <Copy className="w-2.5 h-2.5 opacity-60 group-hover:opacity-100 transition-opacity" /></button></div>
-                                                        {order.subscriptionId && (
+                                                        <div className="mb-2">
+                                                            <button
+                                                                onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(order.id.toUpperCase()); }}
+                                                                className={`group flex flex-shrink-0 items-center justify-center gap-1.5 px-2 py-1 rounded ${order.orderType === 'Subscription' || order.subscriptionId ? 'bg-purple-700' : 'bg-slate-900'} hover:opacity-80 text-[8px] font-black text-white uppercase tracking-[0.2em] shadow-sm transition-all active:scale-95 focus:ring-2 focus:ring-slate-400`}
+                                                                title="Copy Mission ID"
+                                                            >
+                                                                {order.id.toUpperCase()}
+                                                                <Copy className="w-2.5 h-2.5 opacity-60 group-hover:opacity-100 transition-opacity" />
+                                                            </button>
+                                                        </div>
+                                                        {(order.orderType === 'Subscription' || order.subscriptionId) && (
                                                             <div className="mb-2 flex items-center gap-1.5 px-2 py-0.5 bg-purple-100 border border-purple-200 rounded-md w-fit">
                                                                 <RefreshCw className="w-2.5 h-2.5 text-purple-700 animate-spin-slow" />
                                                                 <span className="text-[8px] font-black text-purple-800 uppercase tracking-widest">Subscription</span>
@@ -1136,10 +1175,10 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, isStand
                                                                             }
                                                                         }}
                                                                         className="text-[8px] font-black uppercase px-2.5 py-1.5 bg-slate-200 text-slate-600 rounded-lg hover:bg-red-50 hover:text-red-600 transition-all border border-transparent hover:border-red-100"
-                                                                    >
-                                                                        Cancel
-                                                                    </button>
-                                                                </div>
+                                                                        >
+                                                                            {order.status === 'pending' ? 'Confirm' : 'Cancel'}
+                                                                        </button>
+                                                                    </div>
                                                             )}
                                                         </div>
                                                     </td>
@@ -1159,7 +1198,276 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, isStand
                         </div>
                     </Card>
                 </div>
-            ) : <div className="flex-1 overflow-hidden">{renderSubscriptionsContent()}</div>}
+            ) : orderTab === 'active_plans' ? (
+                <div className="h-full flex flex-col gap-6 overflow-hidden">
+                    <div className="flex-none flex flex-col md:flex-row gap-4 items-center justify-between">
+                        <div className="relative w-full md:w-96">
+                            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                            <input
+                                type="text"
+                                placeholder="Search active plans..."
+                                className="w-full pl-11 pr-4 py-3 rounded-2xl bg-white border border-slate-100 focus:border-green-700 outline-none text-sm font-bold transition-all shadow-sm"
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                            />
+                        </div>
+                    </div>
+
+                    <div className="flex-1 overflow-y-auto space-y-4 pr-2 custom-scrollbar">
+                        <Card className="border-slate-100 shadow-sm overflow-hidden">
+                            <div className="overflow-x-auto">
+                                <table className="w-full text-left border-collapse">
+                                    <thead className="bg-slate-50 border-b border-slate-100">
+                                        <tr>
+                                            <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400">Plan ID</th>
+                                            <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400">Customer</th>
+                                            <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400">Details</th>
+                                            <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400">Recurrence</th>
+                                            <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400">Status</th>
+                                            <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400">Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-slate-50">
+                                        {subscriptions.filter(s => {
+                                            const user = allUsers.find(u => u.id === s.userId);
+                                            const searchLower = searchQuery.toLowerCase();
+                                            return (
+                                                s.id.toLowerCase().includes(searchLower) ||
+                                                (user?.name?.toLowerCase().includes(searchLower)) ||
+                                                (user?.phone?.includes(searchLower))
+                                            );
+                                        }).reverse().length === 0 ? (
+                                            <tr>
+                                                <td colSpan={6} className="px-6 py-12 text-center text-slate-400 font-medium italic">No active plans found.</td>
+                                            </tr>
+                                        ) : (
+                                            subscriptions.filter(s => {
+                                                const user = allUsers.find(u => u.id === s.userId);
+                                                const searchLower = searchQuery.toLowerCase();
+                                                return (
+                                                    s.id.toLowerCase().includes(searchLower) ||
+                                                    (user?.name?.toLowerCase().includes(searchLower)) ||
+                                                    (user?.phone?.includes(searchLower))
+                                                );
+                                            }).reverse().map((sub) => {
+                                                const customer = allUsers.find(u => u.id === sub.userId);
+                                                return (
+                                                    <tr key={sub.id} className="hover:bg-slate-50 transition-colors">
+                                                        <td className="px-6 py-4 whitespace-nowrap font-mono text-[11px] font-black text-slate-900">{sub.id}</td>
+                                                        <td className="px-6 py-4">
+                                                            <p className="text-sm font-bold text-slate-900">{customer?.name || 'Unknown'}</p>
+                                                            <p className="text-[10px] text-slate-400 font-medium">{customer?.phone}</p>
+                                                        </td>
+                                                        <td className="px-6 py-4">
+                                                            <p className="text-[11px] font-black text-purple-700 uppercase tracking-wider">{sub.frequency}</p>
+                                                            <p className="text-[10px] font-bold text-slate-600">{sub.products.length} products</p>
+                                                        </td>
+                                                        <td className="px-6 py-4">
+                                                            <p className="text-xs font-black text-slate-700">Day {sub.deliveryDate}</p>
+                                                        </td>
+                                                        <td className="px-6 py-4">
+                                                            <span className={`text-[9px] font-black uppercase tracking-widest px-2 py-1 rounded-lg ${sub.status === 'active' ? 'bg-green-50 text-green-700' : 'bg-amber-50 text-amber-700'}`}>
+                                                                {sub.status}
+                                                            </span>
+                                                        </td>
+                                                        <td className="px-6 py-4">
+                                                            <div className="flex gap-2">
+                                                                <Button 
+                                                                    variant="outline" 
+                                                                    className="h-8 px-3 text-[10px] font-black uppercase tracking-widest rounded-lg"
+                                                                    onClick={async () => {
+                                                                        await storageService.updateSubscription({ id: sub.id, status: sub.status === 'active' ? 'paused' : 'active' });
+                                                                        fetchData();
+                                                                    }}
+                                                                >
+                                                                    {sub.status === 'active' ? 'Pause' : 'Activate'}
+                                                                </Button>
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                );
+                                            })
+                                        )}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </Card>
+                    </div>
+                </div>
+            ) : (
+                <div className="h-full flex flex-col gap-6 overflow-hidden">
+                    <div className="flex-none flex flex-col md:flex-row gap-4 items-center justify-between">
+                        <div className="relative w-full md:w-96">
+                            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                            <input
+                                type="text"
+                                placeholder="Search subscription orders..."
+                                className="w-full pl-11 pr-4 py-3 rounded-2xl bg-white border border-slate-100 focus:border-green-700 outline-none text-sm font-bold transition-all shadow-sm"
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                            />
+                        </div>
+
+                        {/* Today's date badge */}
+                        <div className="flex items-center gap-3 shrink-0">
+                            <div className="flex items-center gap-2 px-4 py-2.5 bg-purple-50 border border-purple-100 rounded-2xl shadow-sm">
+                                <div className="w-2 h-2 rounded-full bg-purple-500 animate-pulse" />
+                                <span className="text-[11px] font-black text-purple-700 uppercase tracking-widest">
+                                    Today's Deliveries
+                                </span>
+                                <span className="text-[10px] font-bold text-purple-400">
+                                    — {new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="flex-1 overflow-y-auto space-y-4 pr-2 custom-scrollbar">
+                        <Card className="border-slate-100 shadow-sm overflow-hidden mb-8">
+                            <div className="overflow-x-auto">
+                                <table className="w-full text-left border-collapse">
+                                    <thead className="bg-slate-50 border-b border-slate-100">
+                                        <tr>
+                                            <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400">Order ID</th>
+                                            <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400">Customer</th>
+                                            <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400">Total</th>
+                                            <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400">Status</th>
+                                            <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400">Delivery Date</th>
+                                            <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400">Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-slate-50">
+                                        {(() => {
+                                            // Helper: check if a date string is today (IST-aware)
+                                            const todayStr = new Date().toLocaleDateString('en-CA'); // YYYY-MM-DD
+                                            const isToday = (dateStr: string) => {
+                                                if (!dateStr) return false;
+                                                return new Date(dateStr).toLocaleDateString('en-CA') === todayStr;
+                                            };
+
+                                            const todaySubOrders = orders
+                                                .filter(o => (o.orderType === 'Subscription' || o.id.startsWith('MBS') || o.subscriptionId))
+                                                .filter(o => isToday(o.deliveryDate))
+                                                .filter(o => {
+                                                    const user = allUsers.find(u => u.id === o.userId);
+                                                    const searchLower = searchQuery.toLowerCase();
+                                                    return (
+                                                        !searchLower ||
+                                                        o.id.toLowerCase().includes(searchLower) ||
+                                                        o.userId.toLowerCase().includes(searchLower) ||
+                                                        (user?.name?.toLowerCase().includes(searchLower))
+                                                    );
+                                                })
+                                                .reverse();
+
+                                            if (todaySubOrders.length === 0) {
+                                                return (
+                                                    <tr>
+                                                        <td colSpan={6} className="px-6 py-16 text-center">
+                                                            <div className="flex flex-col items-center gap-3">
+                                                                <div className="w-14 h-14 rounded-2xl bg-purple-50 flex items-center justify-center">
+                                                                    <span className="text-2xl">📦</span>
+                                                                </div>
+                                                                <p className="text-slate-500 font-bold text-sm">No subscription deliveries due today.</p>
+                                                                <p className="text-slate-400 text-xs font-medium">Subscription orders scheduled for today will appear here.</p>
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                );
+                                            }
+
+                                            return todaySubOrders.map((order) => {
+                                                const user = allUsers.find(u => u.id === order.userId);
+                                                return (
+                                                    <tr key={order.id} className="hover:bg-slate-50 transition-colors">
+                                                        <td className="px-6 py-4 whitespace-nowrap">
+                                                            <span className="px-2 py-1 bg-purple-700 text-white text-[9px] font-black rounded uppercase tracking-widest">{order.id}</span>
+                                                        </td>
+                                                        <td className="px-6 py-4">
+                                                            <p className="text-sm font-bold text-slate-900">{user?.name || 'Unknown'}</p>
+                                                            <p className="text-[10px] text-slate-400 font-medium">{user?.phone}</p>
+                                                        </td>
+                                                        <td className="px-6 py-4 text-sm font-black text-slate-900">₹{order.total}</td>
+                                                        <td className="px-6 py-4">
+                                                            <span className={`text-[9px] font-black uppercase tracking-widest px-2 py-1 rounded-lg ${
+                                                                order.status === 'delivered' ? 'bg-green-50 text-green-700' :
+                                                                order.status === 'out_for_delivery' ? 'bg-blue-50 text-blue-700' :
+                                                                'bg-amber-50 text-amber-700'
+                                                            }`}>
+                                                                {order.status}
+                                                            </span>
+                                                        </td>
+                                                        <td className="px-6 py-4">
+                                                            <p className="text-xs font-black text-purple-700">
+                                                                {new Date(order.deliveryDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+                                                            </p>
+                                                            <span className="text-[9px] font-black uppercase tracking-widest px-1.5 py-0.5 bg-amber-50 text-amber-600 rounded-md border border-amber-100">
+                                                                Due Today
+                                                            </span>
+                                                        </td>
+                                                        <td className="px-6 py-4">
+                                                            <div className="flex flex-col gap-2">
+                                                                <div className="flex gap-2">
+                                                                    <Button
+                                                                        variant="outline"
+                                                                        className="h-8 px-3 text-[10px] font-black uppercase tracking-widest rounded-lg"
+                                                                        onClick={() => {
+                                                                            setOrderTab('standard');
+                                                                            setViewingOrder(order);
+                                                                        }}
+                                                                    >
+                                                                        View detail
+                                                                    </Button>
+
+                                                                    {['pending', 'confirmed', 'assigned'].includes(order.status) && (
+                                                                        <button
+                                                                            onClick={async (e) => {
+                                                                                e.stopPropagation();
+                                                                                if (order.status === "pending" && window.confirm("Confirm this subscription delivery and dispatch to delivery team?")) {
+                                                                                    try {
+                                                                                        const updatedOrder = { ...order, status: "confirmed" as const };
+                                                                                        setOrders(prev => prev.map(o => o.id === order.id ? updatedOrder : o));
+                                                                                        await storageService.saveOrder(updatedOrder);
+                                                                                        storageService.publishOrderStatusUpdate(order.id, "confirmed", order.userId).catch(() => { });
+                                                                                        notifyOrderStatusChange(order.userId, order.id, "confirmed").catch(() => { });
+                                                                                        alert("Subscription delivery confirmed!");
+                                                                                    } catch (err: any) {
+                                                                                        console.error("Confirm error:", err);
+                                                                                        alert("Failed to confirm: " + err.message);
+                                                                                        fetchData();
+                                                                                    }
+                                                                                } else if (window.confirm("Are you sure you want to cancel this delivery?")) {
+                                                                                    try {
+                                                                                        setOrders(prev => prev.map(o => o.id === order.id ? { ...o, status: 'cancelled' as const } : o));
+                                                                                        await storageService.saveOrder({ ...order, status: 'cancelled' as const });
+                                                                                        notifyOrderStatusChange(order.userId, order.id, 'cancelled').catch(() => { });
+                                                                                        storageService.publishOrderStatusUpdate(order.id, 'cancelled', order.userId).catch(() => { });
+                                                                                    } catch (err: any) {
+                                                                                        console.error("Cancel error:", err);
+                                                                                        alert(`Failed to cancel: ${err.message || 'Unknown error'}`);
+                                                                                        fetchData();
+                                                                                    }
+                                                                                }
+                                                                            }}
+                                                                            className="text-[8px] font-black uppercase px-2.5 py-1.5 bg-slate-200 text-slate-600 rounded-lg hover:bg-red-50 hover:text-red-600 transition-all border border-transparent hover:border-red-100"
+                                                                        >
+                                                                            {order.status === 'pending' ? 'Confirm' : 'Cancel'}
+                                                                        </button>
+                                                                    )}
+                                                                </div>
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                );
+                                            });
+                                        })()}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </Card>
+                    </div>
+                </div>
+            )}
 
             {/* Viewing Order Popup Modal */}
             {viewingOrder && (
@@ -1188,9 +1496,9 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, isStand
                                         </div>
                                         <div className="mt-2.5">
                                             <div className="flex items-center gap-2 group/id">
-                                                <div className="bg-slate-50 px-3 py-1.5 rounded-xl border border-slate-100 flex items-center gap-3">
-                                                    <p className="text-sm font-black text-slate-900 font-mono tracking-tight uppercase leading-none">
-                                                        {viewingOrder.id.toUpperCase().startsWith('MB') ? viewingOrder.id.toUpperCase() : `MB${viewingOrder.id.toUpperCase()}`}
+                                                <div className={`${viewingOrder.orderType === 'Subscription' || viewingOrder.subscriptionId ? 'bg-purple-50 border-purple-100' : 'bg-slate-50 border-slate-100'} px-3 py-1.5 rounded-xl border flex items-center gap-3`}>
+                                                    <p className={`text-sm font-black font-mono tracking-tight uppercase leading-none ${viewingOrder.orderType === 'Subscription' || viewingOrder.subscriptionId ? 'text-purple-900' : 'text-slate-900'}`}>
+                                                        {viewingOrder.id.toUpperCase()}
                                                     </p>
                                                     <button
                                                         onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(viewingOrder.id.toUpperCase()); }}
@@ -1310,151 +1618,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, isStand
     );
 
 
-    const renderSubscriptionsContent = () => {
-        const filteredSubs = subscriptions.filter(s => {
-            const user = allUsers.find(u => u.id === s.userId);
-            const searchLower = searchQuery.toLowerCase();
-            return (
-                s.id.toLowerCase().includes(searchLower) ||
-                (user?.name?.toLowerCase().includes(searchLower)) ||
-                (user?.phone?.includes(searchLower))
-            );
-        }).reverse();
 
-        return (
-            <div className="h-full flex flex-col gap-6 overflow-hidden">
-                <div className="flex-none flex flex-col md:flex-row gap-4 items-center justify-between">
-
-                    <div className="relative w-full md:w-96">
-                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                        <input
-                            type="text"
-                            placeholder="Search subscriptions, customers..."
-                            className="w-full pl-11 pr-4 py-3 rounded-2xl bg-white border border-slate-100 focus:border-green-700 outline-none text-sm font-bold transition-all shadow-sm"
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                        />
-                    </div>
-                    <div className="flex gap-3">
-                    </div>
-
-                </div>
-
-                <Card className="border-slate-100 flex flex-col flex-1 overflow-hidden shadow-sm">
-
-                    <div className="overflow-x-auto overflow-y-auto flex-1 custom-scrollbar">
-                        <table className="w-full text-left border-collapse">
-                            <thead className="sticky top-0 z-10 bg-slate-50/95 backdrop-blur-sm border-b border-slate-100 shadow-[0_1px_2px_rgba(0,0,0,0.05)]">
-                                <tr>
-                                    <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400">Subscription ID</th>
-
-                                    <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400">Customer</th>
-                                    <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400">Details</th>
-                                    <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400">Recurrence</th>
-                                    <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400">Status</th>
-                                    <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400">Date Added</th>
-                                    <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400">Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-slate-50">
-                                {filteredSubs.length === 0 ? (
-                                    <tr>
-                                        <td colSpan={7} className="px-6 py-12 text-center text-slate-400 font-medium whitespace-nowrap">
-                                            No active subscriptions found.
-                                        </td>
-                                    </tr>
-                                ) : (
-                                    filteredSubs.map((sub) => {
-                                        const customer = allUsers.find(u => u.id === sub.userId);
-                                        return (
-                                            <tr key={sub.id} className="hover:bg-slate-50 transition-colors">
-                                                <td className="px-6 py-4 whitespace-nowrap">
-                                                    <p className="font-black text-slate-900 text-[11px] font-mono tracking-wider">{sub.id}</p>
-                                                </td>
-                                                <td className="px-6 py-4">
-                                                    <p className="text-sm font-bold text-slate-900">{customer?.name || 'Unknown'}</p>
-                                                    <p className="text-[10px] text-slate-400 font-medium">{customer?.phone}</p>
-                                                </td>
-                                                <td className="px-6 py-4">
-                                                    <div className="space-y-0.5">
-                                                        <p className="text-[11px] font-black text-purple-700 uppercase tracking-wider">{sub.frequency}</p>
-                                                        {sub.products.map((item, idx) => {
-                                                            const product = products.find(p => p.id === item.productId);
-                                                            return (
-                                                                <p key={idx} className="text-[10px] font-bold text-slate-600">
-                                                                    {product?.name} <span className="text-slate-400">x{item.quantity}</span>
-                                                                </p>
-                                                            );
-                                                        })}
-                                                    </div>
-                                                </td>
-                                                <td className="px-6 py-4">
-                                                    <p className="text-xs font-black text-slate-700">Day {sub.deliveryDate}</p>
-                                                    <p className="text-[10px] text-slate-400 font-medium">Next Month</p>
-                                                </td>
-                                                <td className="px-6 py-4 whitespace-nowrap">
-                                                    <span className={`text-[9px] font-black uppercase tracking-widest px-2 py-1 rounded-lg ${sub.status === 'active' ? 'bg-green-50 text-green-700' :
-                                                        sub.status === 'paused' ? 'bg-amber-50 text-amber-700' : 'bg-red-50 text-red-700'
-                                                        }`}>
-                                                        {sub.status}
-                                                    </span>
-                                                </td>
-                                                <td className="px-6 py-4 whitespace-nowrap">
-                                                    <p className="text-xs font-bold text-slate-900">{new Date(sub.createdAt).toLocaleDateString()}</p>
-                                                </td>
-                                                <td className="px-6 py-4 whitespace-nowrap">
-                                                    <div className="flex gap-2">
-                                                        {sub.status === 'active' ? (
-                                                            <Button
-                                                                variant="outline"
-                                                                className="h-8 px-3 text-[10px] font-black uppercase tracking-widest rounded-lg border-slate-200"
-                                                                onClick={async () => {
-                                                                    await storageService.updateSubscription({ id: sub.id, status: 'paused' });
-                                                                    notificationService.createNotification({ userId: sub.userId, title: '⏸️ Subscription Paused', message: 'Your subscription has been temporarily paused by admin.', type: 'system' }).catch(() => { });
-                                                                    fetchData();
-                                                                }}
-                                                            >
-                                                                Pause
-                                                            </Button>
-                                                        ) : sub.status === 'paused' ? (
-                                                            <Button
-                                                                variant="outline"
-                                                                className="h-8 px-3 text-[10px] font-black uppercase tracking-widest rounded-lg bg-green-50 border-green-100 text-green-700"
-                                                                onClick={async () => {
-                                                                    await storageService.updateSubscription({ id: sub.id, status: 'active' });
-                                                                    notificationService.createNotification({ userId: sub.userId, title: '✅ Subscription Activated', message: 'Your subscription is active again! Deliveries will resume on schedule.', type: 'order' }).catch(() => { });
-                                                                    fetchData();
-                                                                }}
-                                                            >
-                                                                Activate
-                                                            </Button>
-                                                        ) : null}
-                                                        <Button
-                                                            className="h-8 w-8 p-0 rounded-lg bg-red-50 text-red-500 hover:bg-red-600 hover:text-white transition-colors border border-red-100"
-                                                            onClick={async () => {
-                                                                if (window.confirm("Cancel this subscription?")) {
-                                                                    await storageService.deleteSubscription(sub.id);
-                                                                    // Notify customer
-                                                                    notificationService.createNotification({ userId: sub.userId, title: '❌ Subscription Cancelled', message: 'Your subscription has been cancelled. Place a new order anytime from our store.', type: 'system' }).catch(() => { });
-                                                                    fetchData();
-                                                                }
-                                                            }}
-                                                        >
-                                                            <Trash2 className="w-3.5 h-3.5 mx-auto" />
-                                                        </Button>
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                        );
-                                    })
-                                )}
-                            </tbody>
-                        </table>
-                    </div>
-                </Card>
-            </div>
-        );
-    };
 
     const renderProducts = () => {
         const filteredProducts = products.filter(p =>
@@ -3612,6 +3776,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, isStand
                             {activeTab === 'authority' && "Access Control"}
                             {activeTab === 'sales_mgmt' && "Sales Management"}
                             {activeTab === 'logistics' && "Logistics Overview"}
+                            {activeTab === 'settings' && "App Settings"}
                         </h1>
                         <p className="text-slate-400 text-xs font-bold uppercase tracking-[0.2em] mt-2">
                             {activeTab === 'stats' && "System statistics & performance"}
@@ -3622,6 +3787,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, isStand
                             {activeTab === 'authority' && "Control system access & permissions"}
                             {activeTab === 'sales_mgmt' && "Assign targets & track executive performance"}
                             {activeTab === 'logistics' && "Manage fleet, routing and orders"}
+                            {activeTab === 'settings' && "Configure Razorpay payment gateway & platform credentials"}
                         </p>
                     </div>
                     <div className="flex items-center gap-4">
@@ -3682,8 +3848,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, isStand
                     {activeTab === 'orders' ? (
                         renderOrders()
                     ) : (
-                        <div className={`flex-1 ${['stats', 'products', 'users', 'logistics', 'settings'].includes(activeTab) ? 'overflow-hidden' : 'overflow-y-auto custom-scrollbar'} pr-1 -mr-1`}>
-                            <div className={`max-w-[1600px] mx-auto space-y-6 ${['stats', 'products', 'users', 'logistics', 'settings'].includes(activeTab) ? 'h-full flex flex-col' : ''}`}>
+                        <div className={`flex-1 ${['stats', 'products', 'users', 'logistics'].includes(activeTab) ? 'overflow-hidden' : 'overflow-y-auto custom-scrollbar'} pr-1 -mr-1`}>
+                            <div className={`max-w-[1600px] mx-auto space-y-6 ${['stats', 'products', 'users', 'logistics'].includes(activeTab) ? 'h-full flex flex-col' : ''}`}>
                                 {activeTab === 'stats' && renderStats()}
                                 {activeTab === 'analytics' && (
                                     <AnalyticsDashboard
@@ -3699,7 +3865,11 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, isStand
                                 {activeTab === 'authority' && renderAuthority()}
                                 {activeTab === 'sales_mgmt' && renderSalesManagement()}
                                 {activeTab === 'logistics' && renderLogistics()}
-                                {activeTab === 'settings' && renderSettings()}
+                                {activeTab === 'settings' && (
+                                    <AdminSettingsPage
+                                        insforgeUrl={import.meta.env.VITE_INSFORGE_URL || ''}
+                                    />
+                                )}
                             </div>
                         </div>
                     )}
@@ -4024,7 +4194,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, isStand
                 return o;
             });
             setOrders(updatedOrders);
-            
+
             if (selectedMissionOrder && selectedMissionOrder.id.toLowerCase() === orderIdLower) {
                 setSelectedMissionOrder(prev => prev ? { ...prev, deliveryPersonId: deliveryPersonId } : null);
             }
@@ -4491,6 +4661,18 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, isStand
                                                                             <Copy className="w-3 h-3" />
                                                                         </button>
                                                                     </div>
+                                                                    {(order.orderType === 'Subscription' || order.subscriptionId) && (
+                                                                        <div className="mt-1.5 flex items-center gap-1 px-1.5 py-0.5 bg-purple-50 border border-purple-100 rounded text-[8px] font-bold text-purple-700 uppercase tracking-wider w-fit">
+                                                                            <RefreshCw className="w-2.5 h-2.5 animate-spin-slow" />
+                                                                            Subscription
+                                                                        </div>
+                                                                    )}
+                                                                    {order.deliveryOTP && (
+                                                                        <div className="mt-1.5 flex items-center gap-1.5 px-2 py-1 bg-blue-50 border border-blue-100 rounded-lg w-fit">
+                                                                            <Key className="w-3 h-3 text-blue-600" />
+                                                                            <p className="text-[10px] font-black text-blue-700 uppercase tracking-tight">OTP: {order.deliveryOTP}</p>
+                                                                        </div>
+                                                                    )}
                                                                     <p className="text-[10px] font-bold text-slate-400 mt-2 uppercase tracking-tight">{order.createdAt ? new Date(order.createdAt).toLocaleDateString() : 'Date N/A'}</p>
 
                                                                 </div>
@@ -4556,8 +4738,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, isStand
 
                                                                 {/* 6. Actions (3 cols) */}
                                                                 <div className="lg:col-span-3 flex flex-col gap-2">
-                                                                    {/* Row 1: Status badge + Eye */}
-                                                                    <div className="flex items-center justify-between gap-2">
+                                                                    <div className="flex items-center justify-start">
                                                                         <span className={`text-[9px] font-black px-2.5 py-1 rounded-lg uppercase tracking-wide border shadow-sm whitespace-nowrap ${order.status === 'delivered' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' :
                                                                             order.status === 'pending' ? 'bg-amber-50 text-amber-700 border-amber-100' :
                                                                                 order.status === 'confirmed' ? 'bg-indigo-50 text-indigo-700 border-indigo-100' :
@@ -4566,13 +4747,6 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, isStand
                                                                             }`}>
                                                                             {order.status.replace(/_/g, ' ')}
                                                                         </span>
-                                                                        <button
-                                                                            onClick={() => setSelectedMissionOrder(order)}
-                                                                            className="w-8 h-8 rounded-lg bg-white border border-slate-200 flex items-center justify-center text-slate-400 hover:text-indigo-600 hover:border-indigo-100 transition-all shadow-sm shrink-0"
-                                                                            title="View Full Details"
-                                                                        >
-                                                                            <Eye className="w-4 h-4" />
-                                                                        </button>
                                                                     </div>
                                                                     {/* Row 2: Assign agent + Confirm/Return */}
                                                                     <div className="flex items-center gap-2">
@@ -4591,22 +4765,6 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, isStand
                                                                                 className={`shrink-0 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap bg-indigo-600 text-white hover:bg-indigo-700 shadow-md active:scale-95`}
                                                                             >
                                                                                 Confirm
-                                                                            </button>
-                                                                        )}
-                                                                        {(order.status === 'confirmed' || order.status === 'assigned') && (
-                                                                            <button
-                                                                                onClick={() => handleSetOutForDelivery(order.id)}
-                                                                                className={`shrink-0 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap bg-blue-600 text-white hover:bg-blue-700 shadow-md active:scale-95`}
-                                                                            >
-                                                                                Dispatch
-                                                                            </button>
-                                                                        )}
-                                                                        {order.status === 'out_for_delivery' && (
-                                                                            <button
-                                                                                onClick={() => handleMarkAsDelivered(order.id)}
-                                                                                className={`shrink-0 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap bg-emerald-600 text-white hover:bg-emerald-700 shadow-md active:scale-95`}
-                                                                            >
-                                                                                Deliver
                                                                             </button>
                                                                         )}
                                                                         {['returned', 'attempted', 'cancelled'].includes(order.status) && !order.returnConfirmed && (
@@ -4712,10 +4870,62 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, isStand
                                                             </div>
 
                                                             {/* 6. Control Section (2 cols) */}
-                                                            <div className="lg:col-span-2 flex flex-col justify-center items-end h-full">
+                                                            <div className="lg:col-span-2 flex flex-col justify-center items-end gap-3 h-full">
                                                                 <span className="text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-wider bg-indigo-50 text-indigo-700 border border-indigo-100/50">
-                                                                    Recurring Sub
+                                                                    Recurring Plan
                                                                 </span>
+                                                                {orders.some(o => (o.subscriptionId === sub.id || o.id === sub.id) && new Date(o.createdAt).toDateString() === todayStr) ? (
+                                                                    <div className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 text-emerald-600 rounded-lg border border-emerald-100">
+                                                                        <CheckCircle2 className="w-3.5 h-3.5" />
+                                                                        <span className="text-[10px] font-black uppercase tracking-widest">Order Created</span>
+                                                                    </div>
+                                                                ) : (
+                                                                    <button
+                                                                        onClick={async () => {
+                                                                            if (!window.confirm(`Generate a delivery order for ${customer?.name || 'this customer'} today?`)) return;
+                                                                            try {
+                                                                                // Generate a new order for this subscription for today
+                                                                                const newOrder: Omit<Order, 'id' | 'createdAt' | 'deliveryOTP'> = {
+                                                                                    userId: sub.userId,
+                                                                                    subscriptionId: sub.id,
+                                                                                    items: sub.products.map((p: any) => ({
+                                                                                        product: p,
+                                                                                        quantity: p.quantity || 1,
+                                                                                        price: p.price
+                                                                                    })),
+                                                                                    total: sub.total || sub.products.reduce((acc: number, p: any) => acc + (p.price * (p.quantity || 1)), 0),
+                                                                                    status: 'confirmed',
+                                                                                    paymentMethod: 'Online', // Subscriptions are usually prepaid
+                                                                                    paymentStatus: 'paid',
+                                                                                    orderType: 'Subscription',
+                                                                                    deliveryDate: new Date().toISOString(),
+                                                                                    deliveryPersonId: customer?.assignedDeliveryPersonId || null,
+                                                                                    notes: `Auto-generated from plan ${sub.id}`
+                                                                                };
+
+                                                                                const saved = await storageService.saveOrder(newOrder);
+                                                                                setOrders(prev => [saved, ...prev]);
+
+                                                                                // Notify customer
+                                                                                await notifyOrderStatusChange(sub.userId, saved.id, 'confirmed');
+
+                                                                                // Notify driver if assigned
+                                                                                if (saved.deliveryPersonId) {
+                                                                                    notifyDeliveryAssigned(saved.deliveryPersonId, saved.id, customer?.name || 'Customer');
+                                                                                }
+
+                                                                                alert(`Successfully generated subscription order #${saved.id.toUpperCase()}`);
+                                                                            } catch (err) {
+                                                                                console.error("Failed to generate sub order:", err);
+                                                                                alert("Generation failed.");
+                                                                            }
+                                                                        }}
+                                                                        className="px-4 py-2 bg-indigo-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-indigo-700 shadow-xl shadow-indigo-200 transition-all active:scale-95 flex items-center gap-2"
+                                                                    >
+                                                                        <PlusCircle className="w-4 h-4" />
+                                                                        Generate Delivery
+                                                                    </button>
+                                                                )}
                                                             </div>
                                                         </div>
                                                     </div>

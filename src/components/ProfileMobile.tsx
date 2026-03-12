@@ -794,6 +794,16 @@ const ProfileMobile: React.FC<ProfileMobileProps> = ({ user, setUser, onLogout }
                         </div>
                         <span className="text-red-500 font-semibold flex-1 text-left">Logout</span>
                     </button>
+
+                    {/* Legal Links (Medium Focus) */}
+                    <div className="flex flex-col items-center justify-center pt-8 pb-12 gap-2 opacity-60">
+                        <div className="flex items-center gap-3">
+                            <button onClick={() => setView('TERMS')} className="text-[10px] font-bold text-slate-600">Terms & Conditions</button>
+                            <div className="w-1 h-1 rounded-full bg-slate-400" />
+                            <button onClick={() => setView('PRIVACY')} className="text-[10px] font-bold text-slate-600">Privacy Policy</button>
+                        </div>
+                        <p className="text-[9px] font-medium text-slate-400 tracking-wider">Mother Best Premium • v1.0.4</p>
+                    </div>
                 </div>
             )}
 
